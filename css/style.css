@@ -200,6 +200,21 @@ main.wrap {
   color: rgba(28, 43, 46, 0.5);
 }
 
+.facebook-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 14px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--tt-navy);
+  text-decoration: none;
+}
+
+.facebook-link:hover {
+  text-decoration: underline;
+}
+
 /* --- Chips (frequent items) --- */
 
 .chip-row {
