@@ -1,7 +1,9 @@
-# Ticket Témoin
+# Fenua Check
 
 Vérifie que le prix facturé sur ton ticket de caisse correspond au prix affiché
-en rayon (arrêté n°170 CM, Polynésie française).
+en rayon (arrêté n°170 CM, Polynésie française). Nom du dépôt/Worker technique :
+`ticket-temoin` (inchangé pour ne pas casser le déploiement existant), nom de
+marque affiché : Fenua Check.
 
 ## Structure
 
