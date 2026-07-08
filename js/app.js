@@ -16,6 +16,7 @@ let items = []; // { id, name, unitPrice, quantity }
 let receiptPhotos = []; // { id, file, previewUrl }
 let pendingScanMode = null; // "shelf" | "barcode" while a photo picker is open
 let weightModeOn = false;
+let editingItemId = null;
 
 // ---------------------------------------------------------------------------
 // DOM references
@@ -111,6 +112,7 @@ function resetDraft() {
   draftPricePerKgEl.value = "";
   draftWeightTotalEl.textContent = "";
   weightModeOn = false;
+  editingItemId = null;
   draftPriceSimpleEl.hidden = false;
   draftPriceWeightEl.hidden = true;
   addItemChoicesEl.hidden = false;
@@ -118,6 +120,7 @@ function resetDraft() {
   scanErrorEl.hidden = true;
   photoInputEl.value = "";
   pendingScanMode = null;
+  $("draft-confirm").textContent = "Ajouter au ticket";
 }
 
 function showDraft(name, price) {
@@ -126,6 +129,23 @@ function showDraft(name, price) {
   draftPriceEl.value = price !== null && price !== undefined ? String(price) : "";
   draftQuantityEl.value = "1";
   draftFormEl.hidden = false;
+}
+
+function editItem(id) {
+  const item = items.find((i) => i.id === id);
+  if (!item) return;
+  editingItemId = id;
+  addItemChoicesEl.hidden = true;
+  weightModeOn = false;
+  draftPriceSimpleEl.hidden = false;
+  draftPriceWeightEl.hidden = true;
+  draftNameEl.value = item.name;
+  draftPriceEl.value = String(item.unitPrice);
+  draftQuantityEl.value = String(item.quantity);
+  draftFormEl.hidden = false;
+  scanErrorEl.hidden = true;
+  $("draft-confirm").textContent = "Enregistrer les modifications";
+  draftFormEl.scrollIntoView({ behavior: "smooth", block: "center" });
 }
 
 draftWeightToggleEl.addEventListener("click", () => {
@@ -170,22 +190,35 @@ photoInputEl.addEventListener("change", async () => {
   scanStatusEl.hidden = false;
   scanStatusEl.textContent = "Lecture de la photo...";
   scanErrorEl.hidden = true;
+  let addedDirectly = false;
 
   try {
     const compressed = await compressImageFile(file);
     const result = await scanItemPhoto(compressed, mode);
-    if (!result.readable) {
+
+    if (result.readable && result.name && result.price) {
+      // Confident read: add straight to the ticket, no confirmation step.
+      // Mistakes can still be fixed with "Modifier" on the ticket line.
+      addItem(result.name, Math.round(result.price), 1);
+      scanStatusEl.textContent = `Ajouté : ${result.name} · ${Math.round(result.price).toLocaleString("fr-FR")} XPF`;
+      photoInputEl.value = "";
+      pendingScanMode = null;
+      addedDirectly = true;
+      setTimeout(() => {
+        scanStatusEl.hidden = true;
+      }, 2000);
+    } else {
       scanErrorEl.hidden = false;
       scanErrorEl.textContent =
         "Rien de lisible sur cette photo. Tu peux compléter à la main ci-dessous.";
+      showDraft(result.name ?? "", result.price ?? "");
     }
-    showDraft(result.name ?? "", result.price ?? "");
   } catch (err) {
     scanErrorEl.hidden = false;
     scanErrorEl.textContent = err instanceof Error ? err.message : "La lecture a échoué.";
     showDraft("", "");
   } finally {
-    scanStatusEl.hidden = true;
+    if (!addedDirectly) scanStatusEl.hidden = true;
   }
 });
 
@@ -210,7 +243,18 @@ $("draft-confirm").addEventListener("click", () => {
     unitPrice = Math.round(unitPrice);
   }
 
-  addItem(name, unitPrice, quantity);
+  if (editingItemId) {
+    const item = items.find((i) => i.id === editingItemId);
+    if (item) {
+      item.name = name;
+      item.unitPrice = unitPrice;
+      item.quantity = quantity;
+      renderTicket();
+      renderReceiptSection();
+    }
+  } else {
+    addItem(name, unitPrice, quantity);
+  }
   resetDraft();
 });
 
@@ -297,13 +341,19 @@ function renderTicket() {
 
     const priceSpan = document.createElement("span");
     priceSpan.textContent = `${itemTotal(item).toLocaleString("fr-FR")} XPF`;
+    const editBtn = document.createElement("button");
+    editBtn.type = "button";
+    editBtn.className = "link-btn";
+    editBtn.style.color = "var(--tt-navy)";
+    editBtn.textContent = "Modifier";
+    editBtn.addEventListener("click", () => editItem(item.id));
     const removeBtn = document.createElement("button");
     removeBtn.type = "button";
     removeBtn.className = "link-btn";
     removeBtn.textContent = "Retirer";
     removeBtn.addEventListener("click", () => removeItem(item.id));
 
-    priceWrap.append(qtyWrap, priceSpan, removeBtn);
+    priceWrap.append(qtyWrap, priceSpan, editBtn, removeBtn);
     li.append(nameWrap, priceWrap);
     ticketListEl.appendChild(li);
   }

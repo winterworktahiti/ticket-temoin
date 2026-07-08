@@ -307,7 +307,9 @@ main.wrap {
 .ticket-item-price {
   display: flex;
   align-items: center;
-  gap: 12px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
 }
 
 /* --- Receipt photo slot --- */
