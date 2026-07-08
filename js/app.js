@@ -281,6 +281,7 @@ compareBtnEl.addEventListener("click", async () => {
     renderFrequentChips();
 
     const mismatchCount = result.lines.filter((line) => line.status === "mismatch").length;
+    const inconclusiveCount = result.lines.filter((line) => line.status === "inconclusive").length;
     saveTrip({
       id: makeId(),
       date: new Date().toISOString(),
@@ -289,6 +290,7 @@ compareBtnEl.addEventListener("click", async () => {
       totalReceipt: result.totalReceiptMatched,
       totalDifference: result.totalDifference,
       mismatchCount,
+      inconclusiveCount,
     });
     renderHistory();
 
@@ -442,11 +444,21 @@ function renderHistory() {
       hour: "2-digit",
       minute: "2-digit",
     });
-    const detailLabel =
+    const inconclusiveCount = trip.inconclusiveCount ?? 0;
+    let detailLabel;
+    if (trip.mismatchCount > 0) {
+      detailLabel = `${trip.itemCount} article${trip.itemCount > 1 ? "s" : ""}, ${trip.mismatchCount} écart${trip.mismatchCount > 1 ? "s" : ""}`;
+    } else if (inconclusiveCount > 0) {
+      detailLabel = `${trip.itemCount} article${trip.itemCount > 1 ? "s" : ""}, vérification incomplète`;
+    } else {
+      detailLabel = `${trip.itemCount} article${trip.itemCount > 1 ? "s" : ""}, conforme`;
+    }
+    const diffColor =
       trip.mismatchCount > 0
-        ? `${trip.itemCount} article${trip.itemCount > 1 ? "s" : ""}, ${trip.mismatchCount} écart${trip.mismatchCount > 1 ? "s" : ""}`
-        : `${trip.itemCount} article${trip.itemCount > 1 ? "s" : ""}, conforme`;
-    const diffColor = trip.totalDifference > 0 ? "var(--tt-coral)" : "var(--tt-teal)";
+        ? "var(--tt-coral)"
+        : inconclusiveCount > 0
+          ? "var(--tt-ink)"
+          : "var(--tt-teal)";
     const diffLabel = `${trip.totalDifference > 0 ? "+" : ""}${trip.totalDifference.toLocaleString("fr-FR")} XPF`;
 
     li.innerHTML = `
