@@ -310,16 +310,35 @@ compareBtnEl.addEventListener("click", async () => {
 
 function renderResult(result) {
   const hasMismatch = result.lines.some((line) => line.status === "mismatch");
+  const hasInconclusive = result.lines.some((line) => line.status === "inconclusive");
+
+  let bannerClass = "ok";
+  let icon = "✅";
+  let title = "Ticket conforme";
+  if (hasMismatch) {
+    bannerClass = "mismatch";
+    icon = "⚠️";
+    title = "Écart de prix détecté";
+  } else if (hasInconclusive) {
+    bannerClass = "mismatch";
+    icon = "❔";
+    title = "Vérification incomplète";
+  }
 
   const summary = document.createElement("div");
-  summary.className = `result-summary ${hasMismatch ? "mismatch" : "ok"}`;
+  summary.className = `result-summary ${bannerClass}`;
   summary.innerHTML = `
     <p class="result-title">
-      <span>${hasMismatch ? "⚠️" : "✅"}</span>
-      <span>${hasMismatch ? "Écart de prix détecté" : "Ticket conforme"}</span>
+      <span>${icon}</span>
+      <span>${title}</span>
     </p>
     <p>Total rayon : ${formatXpf(result.totalShelf)} · Total ticket : ${formatXpf(result.totalReceiptMatched)}</p>
     ${hasMismatch ? `<p style="font-weight:600;color:var(--tt-coral)">Écart : +${formatXpf(result.totalDifference)}</p>` : ""}
+    ${
+      !hasMismatch && hasInconclusive
+        ? `<p>Au moins un article n'a pas pu être retrouvé sur le ticket avec certitude, vérifie-le à l'oeil sur la photo.</p>`
+        : ""
+    }
   `;
 
   const linesCard = document.createElement("div");

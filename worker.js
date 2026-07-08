@@ -67,6 +67,7 @@ async function callQwenVision(env, { systemPrompt, userText, imageBytes, imageTy
         },
       ],
       temperature: 0.1,
+      max_tokens: 2000,
     }),
   });
 
@@ -196,16 +197,19 @@ async function handleMatch(request, env) {
 Voici les articles du panier, avec leur prix relevé en rayon (en Francs Pacifique, XPF) :
 ${itemsDescription}
 
-Lis toutes les lignes de la photo du ticket de caisse. Pour CHAQUE article du panier ci-dessus, retrouve la ligne du ticket qui correspond le mieux (par similarité de nom, même si l'intitulé de caisse est abrégé), et donne son prix facturé. Si aucune ligne ne correspond clairement, mets receipt_price à null.
+Procède en deux temps, dans cet ordre :
+1. Transcris D'ABORD toutes les lignes produit du ticket de caisse que tu peux lire, avec leur prix exact (en XPF, entier, sans symbole). Un ticket de supermarché a en général une ligne d'intitulé produit suivie d'un code-barre en dessous : ignore le code-barre, ne prends que le nom et le prix. Sois exhaustif, ne saute aucune ligne même si elle te semble déjà correspondre à un article du panier.
+2. Ensuite seulement, pour CHAQUE article du panier ci-dessus, retrouve dans ta transcription la ligne qui correspond le mieux (par similarité de nom, même si l'intitulé de caisse est abrégé ou tronqué), et reporte son prix exact. N'invente jamais un prix : si après une lecture attentive aucune ligne ne correspond clairement, mets receipt_price à null plutôt que de deviner.
 
 Réponds UNIQUEMENT avec un objet JSON strict, sans texte autour, au format exact :
 {
+  "receipt_lines": [ { "text": string, "price": number } ],
   "matches": [
     { "id": string, "receipt_price": number|null, "receipt_line_text": string|null }
   ],
   "unmatched_receipt_lines": string[]
 }
-Le tableau "matches" doit contenir EXACTEMENT un objet par article du panier, dans le même ordre, avec le même id. Les prix sont des nombres entiers en XPF, sans symbole.`;
+"receipt_lines" contient TOUTES les lignes lues à l'étape 1. Le tableau "matches" doit contenir EXACTEMENT un objet par article du panier, dans le même ordre, avec le même id, en te basant sur "receipt_lines". "unmatched_receipt_lines" liste les entrées de "receipt_lines" qui ne correspondent à aucun article du panier.`;
 
     const parsed = await callQwenVision(env, {
       systemPrompt,
