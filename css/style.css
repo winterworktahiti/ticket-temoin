@@ -89,11 +89,11 @@ h1 {
   width: 76px;
   height: 76px;
   border-radius: 999px;
-  border: 3px solid var(--tt-sand);
+  border: none;
   padding: 0;
   overflow: hidden;
   cursor: pointer;
-  background: var(--tt-navy-deep);
+  background: transparent;
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3);
   transition: transform 0.15s ease;
 }
