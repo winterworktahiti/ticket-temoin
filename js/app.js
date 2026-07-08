@@ -405,7 +405,7 @@ function renderResult(result) {
   const startOverBtn = document.createElement("button");
   startOverBtn.type = "button";
   startOverBtn.className = "btn btn-outline btn-block";
-  startOverBtn.textContent = "Nouveau trajet";
+  startOverBtn.textContent = "Nouvelle liste";
   startOverBtn.addEventListener("click", startOver);
 
   resultSectionEl.innerHTML = "";
