@@ -79,15 +79,16 @@
         Ajoute d'abord au moins un article ci-dessus pour débloquer cette étape.
       </p>
 
-      <button type="button" id="receipt-slot" class="photo-slot" disabled>
-        <img id="receipt-preview" hidden />
-        <span id="receipt-placeholder" class="photo-placeholder">
-          <span class="choice-icon">📷</span>
-          Photographie tout le ticket, bien à plat
-        </span>
+      <div id="receipt-photos" class="receipt-photos"></div>
+
+      <button type="button" id="receipt-add-btn" class="btn btn-outline btn-block" disabled>
+        📷 Ajouter une photo du ticket
       </button>
+      <p class="hint-text">
+        Ticket long ? Prends-le en plusieurs photos (haut, milieu, bas), elles seront lues
+        ensemble.
+      </p>
       <input id="receipt-input" type="file" accept="image/*" capture="environment" hidden />
-      <button type="button" id="receipt-remove" class="link-btn" hidden>Retirer</button>
 
       <button type="button" id="compare-btn" class="btn btn-primary btn-block" disabled>
         Comparer (ajoute un article d'abord)

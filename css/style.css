@@ -402,6 +402,53 @@ main.wrap {
   border-top: none;
 }
 
+/* --- Receipt multi-photo thumbnails --- */
+
+.receipt-photos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.receipt-photos:empty {
+  margin-top: 0;
+}
+
+.receipt-thumb {
+  position: relative;
+  width: 84px;
+  height: 84px;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid rgba(14, 58, 69, 0.2);
+}
+
+.receipt-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.receipt-thumb-remove {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  border: none;
+  background: rgba(10, 40, 48, 0.75);
+  color: var(--tt-sand);
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 /* --- Ad slots: neutral placeholders, styled minimally so any network's embed
      drops in cleanly. Hidden by default (see index.html); unhide once wired. --- */
 

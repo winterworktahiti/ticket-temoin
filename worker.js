@@ -39,14 +39,18 @@ function bytesToBase64(bytes) {
   return btoa(binary);
 }
 
-async function callQwenVision(env, { systemPrompt, userText, imageBytes, imageType }) {
+async function callQwenVision(env, { systemPrompt, userText, images }) {
   const apiKey = env.QWEN_API_KEY;
   const baseUrl = env.QWEN_BASE_URL || "https://dashscope-intl.aliyuncs.com/compatible-mode/v1";
   if (!apiKey) {
     throw new Error("La clé Qwen n'est pas configurée côté serveur. Vérifie les variables du projet.");
   }
 
-  const dataUrl = `data:${imageType};base64,${bytesToBase64(imageBytes)}`;
+  const content = [{ type: "text", text: userText }];
+  for (const image of images) {
+    const dataUrl = `data:${image.type};base64,${bytesToBase64(image.bytes)}`;
+    content.push({ type: "image_url", image_url: { url: dataUrl } });
+  }
 
   const response = await fetch(`${baseUrl}/chat/completions`, {
     method: "POST",
@@ -58,13 +62,7 @@ async function callQwenVision(env, { systemPrompt, userText, imageBytes, imageTy
       model: "qwen-vl-max",
       messages: [
         { role: "system", content: systemPrompt },
-        {
-          role: "user",
-          content: [
-            { type: "text", text: userText },
-            { type: "image_url", image_url: { url: dataUrl } },
-          ],
-        },
+        { role: "user", content },
       ],
       temperature: 0.1,
       max_tokens: 2000,
@@ -129,8 +127,7 @@ async function handleScan(request, env) {
     const parsed = await callQwenVision(env, {
       systemPrompt: isBarcode ? BARCODE_PROMPT : SHELF_PROMPT,
       userText: isBarcode ? "Photo du produit et de son code-barre :" : "Photo de l'étiquette prix :",
-      imageBytes: bytes,
-      imageType: file.type || "image/jpeg",
+      images: [{ bytes, type: file.type || "image/jpeg" }],
     });
 
     let data = {
@@ -157,11 +154,14 @@ async function handleScan(request, env) {
 async function handleMatch(request, env) {
   try {
     const form = await request.formData();
-    const file = form.get("receipt");
+    const files = form.getAll("receipt").filter((entry) => entry instanceof File);
     const itemsRaw = form.get("items");
 
-    if (!(file instanceof File)) {
+    if (files.length === 0) {
       return jsonResponse({ ok: false, error: "Aucune photo de ticket reçue." }, 400);
+    }
+    if (files.length > 6) {
+      return jsonResponse({ ok: false, error: "Maximum 6 photos par ticket." }, 400);
     }
     if (typeof itemsRaw !== "string") {
       return jsonResponse({ ok: false, error: "Liste d'articles manquante." }, 400);
@@ -180,25 +180,36 @@ async function handleMatch(request, env) {
       return jsonResponse({ ok: false, error: "Liste d'articles invalide." }, 400);
     }
 
-    const bytes = new Uint8Array(await file.arrayBuffer());
-    if (bytes.byteLength === 0) {
-      return jsonResponse({ ok: false, error: "Photo vide, reprends le ticket." }, 400);
+    const images = [];
+    let totalBytes = 0;
+    for (const file of files) {
+      const bytes = new Uint8Array(await file.arrayBuffer());
+      if (bytes.byteLength === 0) {
+        return jsonResponse({ ok: false, error: "Une des photos est vide, reprends-la." }, 400);
+      }
+      totalBytes += bytes.byteLength;
+      images.push({ bytes, type: file.type || "image/jpeg" });
     }
-    if (bytes.byteLength > 8_000_000) {
-      return jsonResponse({ ok: false, error: "Photo trop lourde, reprends-la." }, 413);
+    if (totalBytes > 20_000_000) {
+      return jsonResponse({ ok: false, error: "Photos trop lourdes au total, reprends-les." }, 413);
     }
 
     const itemsDescription = items
       .map((item) => `- id="${item.id}" nom="${item.name}" prix_rayon=${item.shelfPrice}`)
       .join("\n");
 
-    const systemPrompt = `Tu compares un ticket de courses (constitué en rayon) avec la photo du ticket de caisse final, pour un outil de vérification de prix en Polynésie française (arrêté n°170 CM).
+    const multiPhotoNote =
+      images.length > 1
+        ? `\nCe ticket a été photographié en ${images.length} photos successives (le même ticket, des portions différentes : haut, milieu, bas). Traite-les comme un seul ticket continu : ne compte pas deux fois une ligne qui apparaîtrait à la jonction de deux photos.\n`
+        : "";
 
+    const systemPrompt = `Tu compares un ticket de courses (constitué en rayon) avec ${images.length > 1 ? "les photos" : "la photo"} du ticket de caisse final, pour un outil de vérification de prix en Polynésie française (arrêté n°170 CM).
+${multiPhotoNote}
 Voici les articles du panier, avec leur prix relevé en rayon (en Francs Pacifique, XPF) :
 ${itemsDescription}
 
 Procède en deux temps, dans cet ordre :
-1. Transcris D'ABORD toutes les lignes produit du ticket de caisse que tu peux lire, avec leur prix exact (en XPF, entier, sans symbole). Un ticket de supermarché a en général une ligne d'intitulé produit suivie d'un code-barre en dessous : ignore le code-barre, ne prends que le nom et le prix. Sois exhaustif, ne saute aucune ligne même si elle te semble déjà correspondre à un article du panier.
+1. Transcris D'ABORD toutes les lignes produit du ticket de caisse que tu peux lire sur l'ensemble des photos, avec leur prix exact (en XPF, entier, sans symbole). Un ticket de supermarché a en général une ligne d'intitulé produit suivie d'un code-barre en dessous : ignore le code-barre, ne prends que le nom et le prix. Sois exhaustif, ne saute aucune ligne même si elle te semble déjà correspondre à un article du panier.
 2. Ensuite seulement, pour CHAQUE article du panier ci-dessus, retrouve dans ta transcription la ligne qui correspond le mieux (par similarité de nom, même si l'intitulé de caisse est abrégé ou tronqué), et reporte son prix exact. N'invente jamais un prix : si après une lecture attentive aucune ligne ne correspond clairement, mets receipt_price à null plutôt que de deviner.
 
 Réponds UNIQUEMENT avec un objet JSON strict, sans texte autour, au format exact :
@@ -209,13 +220,12 @@ Réponds UNIQUEMENT avec un objet JSON strict, sans texte autour, au format exac
   ],
   "unmatched_receipt_lines": string[]
 }
-"receipt_lines" contient TOUTES les lignes lues à l'étape 1. Le tableau "matches" doit contenir EXACTEMENT un objet par article du panier, dans le même ordre, avec le même id, en te basant sur "receipt_lines". "unmatched_receipt_lines" liste les entrées de "receipt_lines" qui ne correspondent à aucun article du panier.`;
+"receipt_lines" contient TOUTES les lignes lues à l'étape 1, toutes photos confondues. Le tableau "matches" doit contenir EXACTEMENT un objet par article du panier, dans le même ordre, avec le même id, en te basant sur "receipt_lines". "unmatched_receipt_lines" liste les entrées de "receipt_lines" qui ne correspondent à aucun article du panier.`;
 
     const parsed = await callQwenVision(env, {
       systemPrompt,
-      userText: "Photo du ticket de caisse :",
-      imageBytes: bytes,
-      imageType: file.type || "image/jpeg",
+      userText: images.length > 1 ? "Photos du ticket de caisse (une seule et même ticket) :" : "Photo du ticket de caisse :",
+      images,
     });
 
     const matches = Array.isArray(parsed.matches) ? parsed.matches : [];

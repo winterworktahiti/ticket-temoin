@@ -13,7 +13,7 @@ import {
 // ---------------------------------------------------------------------------
 
 let items = []; // { id, name, shelfPrice }
-let receiptFile = null;
+let receiptPhotos = []; // { id, file, previewUrl }
 let pendingScanMode = null; // "shelf" | "barcode" while a photo picker is open
 
 // ---------------------------------------------------------------------------
@@ -38,15 +38,14 @@ const ticketTotalLabelEl = $("ticket-total-label");
 
 const receiptSectionEl = $("receipt-section");
 const receiptHintEl = $("receipt-hint");
-const receiptSlotEl = $("receipt-slot");
-const receiptPreviewEl = $("receipt-preview");
-const receiptPlaceholderEl = $("receipt-placeholder");
+const receiptPhotosEl = $("receipt-photos");
+const receiptAddBtnEl = $("receipt-add-btn");
 const receiptInputEl = $("receipt-input");
-const receiptRemoveEl = $("receipt-remove");
 const compareBtnEl = $("compare-btn");
 const compareErrorEl = $("compare-error");
 
 const resultSectionEl = $("result-section");
+
 
 const historySectionEl = $("history-section");
 const historyListEl = $("history-list");
@@ -218,25 +217,51 @@ function renderReceiptSection() {
   const hasItems = items.length > 0;
   receiptSectionEl.classList.toggle("disabled", !hasItems);
   receiptHintEl.textContent = hasItems
-    ? "Une seule photo du ticket complet suffit, l'IA retrouve chaque article."
+    ? "Une ou plusieurs photos du ticket suffisent, l'IA retrouve chaque article."
     : "Ajoute d'abord au moins un article ci-dessus pour débloquer cette étape.";
-  receiptSlotEl.disabled = !hasItems;
+  receiptAddBtnEl.disabled = !hasItems || receiptPhotos.length >= 6;
   updateCompareButton();
+}
+
+function renderReceiptPhotos() {
+  receiptPhotosEl.innerHTML = "";
+  for (const photo of receiptPhotos) {
+    const thumb = document.createElement("div");
+    thumb.className = "receipt-thumb";
+    const img = document.createElement("img");
+    img.src = photo.previewUrl;
+    const removeBtn = document.createElement("button");
+    removeBtn.type = "button";
+    removeBtn.className = "receipt-thumb-remove";
+    removeBtn.textContent = "✕";
+    removeBtn.addEventListener("click", () => removeReceiptPhoto(photo.id));
+    thumb.append(img, removeBtn);
+    receiptPhotosEl.appendChild(thumb);
+  }
+}
+
+function removeReceiptPhoto(id) {
+  receiptPhotos = receiptPhotos.filter((photo) => photo.id !== id);
+  renderReceiptPhotos();
+  renderReceiptSection();
 }
 
 function updateCompareButton() {
   const hasItems = items.length > 0;
-  compareBtnEl.disabled = !hasItems || !receiptFile;
+  const hasPhotos = receiptPhotos.length > 0;
+  compareBtnEl.disabled = !hasItems || !hasPhotos;
   if (!hasItems) {
     compareBtnEl.textContent = "Comparer (ajoute un article d'abord)";
+  } else if (!hasPhotos) {
+    compareBtnEl.textContent = "Comparer (ajoute une photo du ticket d'abord)";
   } else {
     const total = items.reduce((sum, item) => sum + item.shelfPrice, 0);
     compareBtnEl.textContent = `Comparer ${items.length} article${items.length > 1 ? "s" : ""} (${total.toLocaleString("fr-FR")} XPF)`;
   }
 }
 
-receiptSlotEl.addEventListener("click", () => {
-  if (items.length === 0) return;
+receiptAddBtnEl.addEventListener("click", () => {
+  if (items.length === 0 || receiptPhotos.length >= 6) return;
   receiptInputEl.click();
 });
 
@@ -244,26 +269,18 @@ receiptInputEl.addEventListener("change", async () => {
   const file = receiptInputEl.files?.[0];
   if (!file) return;
   const compressed = await compressImageFile(file);
-  receiptFile = compressed;
-  const url = URL.createObjectURL(compressed);
-  receiptPreviewEl.src = url;
-  receiptPreviewEl.hidden = false;
-  receiptPlaceholderEl.hidden = true;
-  receiptRemoveEl.hidden = false;
-  updateCompareButton();
-});
-
-receiptRemoveEl.addEventListener("click", () => {
-  receiptFile = null;
+  receiptPhotos.push({
+    id: makeId(),
+    file: compressed,
+    previewUrl: URL.createObjectURL(compressed),
+  });
   receiptInputEl.value = "";
-  receiptPreviewEl.hidden = true;
-  receiptPlaceholderEl.hidden = false;
-  receiptRemoveEl.hidden = true;
-  updateCompareButton();
+  renderReceiptPhotos();
+  renderReceiptSection();
 });
 
 compareBtnEl.addEventListener("click", async () => {
-  if (!receiptFile || items.length === 0) return;
+  if (receiptPhotos.length === 0 || items.length === 0) return;
   compareBtnEl.disabled = true;
   compareBtnEl.textContent = "Comparaison en cours...";
   compareErrorEl.hidden = true;
@@ -274,7 +291,10 @@ compareBtnEl.addEventListener("click", async () => {
       name: item.name,
       shelfPrice: item.shelfPrice,
     }));
-    const result = await matchReceiptPhoto(receiptFile, payloadItems);
+    const result = await matchReceiptPhoto(
+      receiptPhotos.map((photo) => photo.file),
+      payloadItems,
+    );
     renderResult(result);
 
     for (const item of items) recordItemUsage(item.name, item.shelfPrice);
@@ -409,11 +429,9 @@ function renderResult(result) {
 
 function startOver() {
   items = [];
-  receiptFile = null;
+  receiptPhotos = [];
   receiptInputEl.value = "";
-  receiptPreviewEl.hidden = true;
-  receiptPlaceholderEl.hidden = false;
-  receiptRemoveEl.hidden = true;
+  renderReceiptPhotos();
   compareErrorEl.hidden = true;
   resultSectionEl.hidden = true;
   resultSectionEl.innerHTML = "";

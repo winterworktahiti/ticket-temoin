@@ -19,9 +19,9 @@ export async function scanItemPhoto(file, mode) {
   return parseEnvelope(response);
 }
 
-export async function matchReceiptPhoto(file, items) {
+export async function matchReceiptPhoto(files, items) {
   const form = new FormData();
-  form.append("receipt", file);
+  for (const file of files) form.append("receipt", file);
   form.append("items", JSON.stringify(items));
   const response = await fetch("/api/match", { method: "POST", body: form });
   return parseEnvelope(response);
