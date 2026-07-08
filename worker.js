@@ -1,4 +1,27 @@
-// Cloudflare Pages Function. Same Qwen credential pattern as scan.js.
+// Cloudflare Worker (unified Workers + static assets model, 2026).
+// Static files (index.html, css/, js/) are served via the ASSETS binding,
+// configured in wrangler.jsonc. This script only handles the two API
+// routes; wrangler.jsonc's assets.run_worker_first sends /api/* here first,
+// everything else falls straight through to the static assets binding.
+
+const SHELF_PROMPT = `Tu regardes une photo d'une étiquette de prix en rayon dans un supermarché de Polynésie française.
+Réponds UNIQUEMENT avec un objet JSON strict, sans texte autour :
+{
+  "name": string|null,
+  "price": number|null,
+  "barcode": null,
+  "readable": boolean
+}`;
+
+const BARCODE_PROMPT = `Tu regardes une photo d'un produit de supermarché avec son code-barre visible.
+Extrais : 1) la suite de chiffres du code-barre (EAN-13, EAN-8 ou UPC) si lisible, 2) le nom du produit si visible sur l'emballage autour.
+Réponds UNIQUEMENT avec un objet JSON strict, sans texte autour :
+{
+  "name": string|null,
+  "price": null,
+  "barcode": string|null,
+  "readable": boolean
+}`;
 
 function jsonResponse(body, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -20,7 +43,7 @@ async function callQwenVision(env, { systemPrompt, userText, imageBytes, imageTy
   const apiKey = env.QWEN_API_KEY;
   const baseUrl = env.QWEN_BASE_URL || "https://dashscope-intl.aliyuncs.com/compatible-mode/v1";
   if (!apiKey) {
-    throw new Error("La clé Qwen n'est pas configurée côté serveur. Vérifie les variables d'environnement du projet.");
+    throw new Error("La clé Qwen n'est pas configurée côté serveur. Vérifie les variables du projet.");
   }
 
   const dataUrl = `data:${imageType};base64,${bytesToBase64(imageBytes)}`;
@@ -65,9 +88,72 @@ async function callQwenVision(env, { systemPrompt, userText, imageBytes, imageTy
   }
 }
 
-export async function onRequestPost(context) {
-  const { request, env } = context;
+async function lookupOpenFoodFacts(barcode) {
+  try {
+    const response = await fetch(
+      `https://world.openfoodfacts.org/api/v2/product/${barcode}.json`,
+      { signal: AbortSignal.timeout(4000) },
+    );
+    if (!response.ok) return null;
+    const json = await response.json();
+    const name = json.product?.product_name_fr || json.product?.product_name;
+    return json.status === 1 && name ? name : null;
+  } catch {
+    return null;
+  }
+}
 
+async function handleScan(request, env) {
+  try {
+    const form = await request.formData();
+    const file = form.get("image");
+    const mode = form.get("mode");
+
+    if (!(file instanceof File)) {
+      return jsonResponse({ ok: false, error: "Aucune image reçue." }, 400);
+    }
+    if (mode !== "shelf" && mode !== "barcode") {
+      return jsonResponse({ ok: false, error: "Mode de scan invalide." }, 400);
+    }
+
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    if (bytes.byteLength === 0) {
+      return jsonResponse({ ok: false, error: "Image vide, reprends la photo." }, 400);
+    }
+    if (bytes.byteLength > 8_000_000) {
+      return jsonResponse({ ok: false, error: "Photo trop lourde, reprends-la." }, 413);
+    }
+
+    const isBarcode = mode === "barcode";
+    const parsed = await callQwenVision(env, {
+      systemPrompt: isBarcode ? BARCODE_PROMPT : SHELF_PROMPT,
+      userText: isBarcode ? "Photo du produit et de son code-barre :" : "Photo de l'étiquette prix :",
+      imageBytes: bytes,
+      imageType: file.type || "image/jpeg",
+    });
+
+    let data = {
+      name: typeof parsed.name === "string" ? parsed.name : null,
+      price: typeof parsed.price === "number" ? parsed.price : null,
+      barcode: typeof parsed.barcode === "string" ? parsed.barcode : null,
+      readable: Boolean(parsed.readable),
+    };
+
+    if (isBarcode && data.barcode) {
+      const offName = await lookupOpenFoodFacts(data.barcode);
+      if (offName) data = { ...data, name: offName, readable: true };
+    }
+
+    return jsonResponse({ ok: true, data });
+  } catch (err) {
+    return jsonResponse(
+      { ok: false, error: err instanceof Error ? err.message : "La lecture de la photo a échoué." },
+      502,
+    );
+  }
+}
+
+async function handleMatch(request, env) {
   try {
     const form = await request.formData();
     const file = form.get("receipt");
@@ -176,3 +262,19 @@ Le tableau "matches" doit contenir EXACTEMENT un objet par article du panier, da
     );
   }
 }
+
+export default {
+  async fetch(request, env) {
+    const url = new URL(request.url);
+
+    if (request.method === "POST" && url.pathname === "/api/scan") {
+      return handleScan(request, env);
+    }
+    if (request.method === "POST" && url.pathname === "/api/match") {
+      return handleMatch(request, env);
+    }
+
+    // Anything else (including GET on /api/*): fall through to static assets.
+    return env.ASSETS.fetch(request);
+  },
+};
