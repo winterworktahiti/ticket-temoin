@@ -44,7 +44,10 @@ body {
 
 .site-header {
   position: relative;
-  background: var(--tt-navy);
+  background-color: var(--tt-navy);
+  background-image:
+    repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.04) 0 2px, transparent 2px 16px),
+    repeating-linear-gradient(-45deg, rgba(255, 255, 255, 0.04) 0 2px, transparent 2px 16px);
   padding: 28px 0 36px;
 }
 
