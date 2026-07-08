@@ -14,6 +14,15 @@
   box-sizing: border-box;
 }
 
+/* Several elements below are toggled via the `hidden` attribute in app.js
+   while also having a class that sets `display` (flex/grid) for when they
+   ARE shown. Without this rule, that class's `display` value wins over the
+   browser's default `[hidden] { display: none }`, so the element never
+   actually hides. This makes `hidden` authoritative everywhere. */
+[hidden] {
+  display: none !important;
+}
+
 body {
   margin: 0;
   min-height: 100vh;
