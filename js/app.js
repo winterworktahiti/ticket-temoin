@@ -12,9 +12,10 @@ import {
 // State
 // ---------------------------------------------------------------------------
 
-let items = []; // { id, name, shelfPrice }
+let items = []; // { id, name, unitPrice, quantity }
 let receiptPhotos = []; // { id, file, previewUrl }
 let pendingScanMode = null; // "shelf" | "barcode" while a photo picker is open
+let weightModeOn = false;
 
 // ---------------------------------------------------------------------------
 // DOM references
@@ -30,6 +31,13 @@ const scanErrorEl = $("scan-error");
 const draftFormEl = $("draft-form");
 const draftNameEl = $("draft-name");
 const draftPriceEl = $("draft-price");
+const draftQuantityEl = $("draft-quantity");
+const draftWeightToggleEl = $("draft-weight-toggle");
+const draftPriceSimpleEl = $("draft-price-simple");
+const draftPriceWeightEl = $("draft-price-weight");
+const draftWeightKgEl = $("draft-weight-kg");
+const draftPricePerKgEl = $("draft-price-per-kg");
+const draftWeightTotalEl = $("draft-weight-total");
 
 const ticketSectionEl = $("ticket-list-section");
 const ticketListEl = $("ticket-list");
@@ -64,6 +72,10 @@ function makeId() {
   return `item-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
+function itemTotal(item) {
+  return Math.round(item.unitPrice * item.quantity);
+}
+
 // ---------------------------------------------------------------------------
 // Frequent item chips
 // ---------------------------------------------------------------------------
@@ -81,7 +93,7 @@ function renderFrequentChips() {
     chip.type = "button";
     chip.className = "chip";
     chip.textContent = `${item.name} · ${item.price.toLocaleString("fr-FR")} XPF`;
-    chip.addEventListener("click", () => addItem(item.name, item.price));
+    chip.addEventListener("click", () => addItem(item.name, item.price, 1));
     frequentChipsEl.appendChild(chip);
   }
 }
@@ -94,6 +106,13 @@ function resetDraft() {
   draftFormEl.hidden = true;
   draftNameEl.value = "";
   draftPriceEl.value = "";
+  draftQuantityEl.value = "1";
+  draftWeightKgEl.value = "";
+  draftPricePerKgEl.value = "";
+  draftWeightTotalEl.textContent = "";
+  weightModeOn = false;
+  draftPriceSimpleEl.hidden = false;
+  draftPriceWeightEl.hidden = true;
   addItemChoicesEl.hidden = false;
   scanStatusEl.hidden = true;
   scanErrorEl.hidden = true;
@@ -105,8 +124,28 @@ function showDraft(name, price) {
   addItemChoicesEl.hidden = true;
   draftNameEl.value = name ?? "";
   draftPriceEl.value = price !== null && price !== undefined ? String(price) : "";
+  draftQuantityEl.value = "1";
   draftFormEl.hidden = false;
 }
+
+draftWeightToggleEl.addEventListener("click", () => {
+  weightModeOn = !weightModeOn;
+  draftPriceSimpleEl.hidden = weightModeOn;
+  draftPriceWeightEl.hidden = !weightModeOn;
+});
+
+function updateWeightTotal() {
+  const weight = Number(draftWeightKgEl.value.replace(",", "."));
+  const pricePerKg = Number(draftPricePerKgEl.value.replace(",", "."));
+  if (weight > 0 && pricePerKg > 0) {
+    const total = Math.round(weight * pricePerKg);
+    draftWeightTotalEl.textContent = `Prix estimé : ${total.toLocaleString("fr-FR")} XPF`;
+  } else {
+    draftWeightTotalEl.textContent = "";
+  }
+}
+draftWeightKgEl.addEventListener("input", updateWeightTotal);
+draftPricePerKgEl.addEventListener("input", updateWeightTotal);
 
 addItemChoicesEl.addEventListener("click", (event) => {
   const button = event.target.closest(".choice-btn");
@@ -154,20 +193,54 @@ $("draft-cancel").addEventListener("click", resetDraft);
 
 $("draft-confirm").addEventListener("click", () => {
   const name = draftNameEl.value.trim();
-  const price = Number(draftPriceEl.value.replace(",", "."));
-  if (!name || Number.isNaN(price) || price <= 0) return;
-  addItem(name, Math.round(price));
+  if (!name) return;
+
+  let unitPrice;
+  let quantity = Math.max(1, Math.round(Number(draftQuantityEl.value)) || 1);
+
+  if (weightModeOn) {
+    const weight = Number(draftWeightKgEl.value.replace(",", "."));
+    const pricePerKg = Number(draftPricePerKgEl.value.replace(",", "."));
+    if (!(weight > 0) || !(pricePerKg > 0)) return;
+    unitPrice = Math.round(weight * pricePerKg);
+    quantity = 1; // a weighed item is its own single line, not a discrete unit count
+  } else {
+    unitPrice = Number(draftPriceEl.value.replace(",", "."));
+    if (Number.isNaN(unitPrice) || unitPrice <= 0) return;
+    unitPrice = Math.round(unitPrice);
+  }
+
+  addItem(name, unitPrice, quantity);
   resetDraft();
 });
 
-function addItem(name, price) {
-  items.push({ id: makeId(), name, shelfPrice: price });
+function addItem(name, unitPrice, quantity = 1) {
+  const existing = items.find(
+    (item) => item.name.toLowerCase() === name.toLowerCase() && item.unitPrice === unitPrice,
+  );
+  if (existing) {
+    existing.quantity += quantity;
+  } else {
+    items.push({ id: makeId(), name, unitPrice, quantity });
+  }
   renderTicket();
   renderReceiptSection();
 }
 
 function removeItem(id) {
   items = items.filter((item) => item.id !== id);
+  renderTicket();
+  renderReceiptSection();
+}
+
+function changeItemQuantity(id, delta) {
+  const item = items.find((i) => i.id === id);
+  if (!item) return;
+  item.quantity += delta;
+  if (item.quantity <= 0) {
+    removeItem(id);
+    return;
+  }
   renderTicket();
   renderReceiptSection();
 }
@@ -183,28 +256,55 @@ function renderTicket() {
     return;
   }
   ticketSectionEl.hidden = false;
-  const total = items.reduce((sum, item) => sum + item.shelfPrice, 0);
+  const total = items.reduce((sum, item) => sum + itemTotal(item), 0);
   ticketCountLabelEl.textContent = `Ticket en cours (${items.length} article${items.length > 1 ? "s" : ""})`;
   ticketTotalLabelEl.textContent = `${total.toLocaleString("fr-FR")} XPF`;
 
   ticketListEl.innerHTML = "";
   for (const item of items) {
     const li = document.createElement("li");
-    const nameSpan = document.createElement("span");
+    const nameWrap = document.createElement("div");
+    const nameSpan = document.createElement("div");
     nameSpan.textContent = item.name;
+    nameWrap.appendChild(nameSpan);
+    if (item.quantity > 1) {
+      const unitHint = document.createElement("div");
+      unitHint.className = "hint-text";
+      unitHint.textContent = `${item.unitPrice.toLocaleString("fr-FR")} XPF x ${item.quantity}`;
+      nameWrap.appendChild(unitHint);
+    }
 
     const priceWrap = document.createElement("div");
     priceWrap.className = "ticket-item-price";
+
+    const qtyWrap = document.createElement("div");
+    qtyWrap.style.display = "flex";
+    qtyWrap.style.alignItems = "center";
+    qtyWrap.style.gap = "6px";
+    const minusBtn = document.createElement("button");
+    minusBtn.type = "button";
+    minusBtn.className = "qty-btn";
+    minusBtn.textContent = "−";
+    minusBtn.addEventListener("click", () => changeItemQuantity(item.id, -1));
+    const qtyLabel = document.createElement("span");
+    qtyLabel.textContent = String(item.quantity);
+    const plusBtn = document.createElement("button");
+    plusBtn.type = "button";
+    plusBtn.className = "qty-btn";
+    plusBtn.textContent = "+";
+    plusBtn.addEventListener("click", () => changeItemQuantity(item.id, 1));
+    qtyWrap.append(minusBtn, qtyLabel, plusBtn);
+
     const priceSpan = document.createElement("span");
-    priceSpan.textContent = `${item.shelfPrice.toLocaleString("fr-FR")} XPF`;
+    priceSpan.textContent = `${itemTotal(item).toLocaleString("fr-FR")} XPF`;
     const removeBtn = document.createElement("button");
     removeBtn.type = "button";
     removeBtn.className = "link-btn";
     removeBtn.textContent = "Retirer";
     removeBtn.addEventListener("click", () => removeItem(item.id));
 
-    priceWrap.append(priceSpan, removeBtn);
-    li.append(nameSpan, priceWrap);
+    priceWrap.append(qtyWrap, priceSpan, removeBtn);
+    li.append(nameWrap, priceWrap);
     ticketListEl.appendChild(li);
   }
 }
@@ -255,7 +355,7 @@ function updateCompareButton() {
   } else if (!hasPhotos) {
     compareBtnEl.textContent = "Comparer (ajoute une photo du ticket d'abord)";
   } else {
-    const total = items.reduce((sum, item) => sum + item.shelfPrice, 0);
+    const total = items.reduce((sum, item) => sum + itemTotal(item), 0);
     compareBtnEl.textContent = `Comparer ${items.length} article${items.length > 1 ? "s" : ""} (${total.toLocaleString("fr-FR")} XPF)`;
   }
 }
@@ -289,7 +389,8 @@ compareBtnEl.addEventListener("click", async () => {
     const payloadItems = items.map((item) => ({
       id: item.id,
       name: item.name,
-      shelfPrice: item.shelfPrice,
+      shelfPrice: itemTotal(item),
+      quantity: item.quantity,
     }));
     const result = await matchReceiptPhoto(
       receiptPhotos.map((photo) => photo.file),
@@ -297,7 +398,7 @@ compareBtnEl.addEventListener("click", async () => {
     );
     renderResult(result);
 
-    for (const item of items) recordItemUsage(item.name, item.shelfPrice);
+    for (const item of items) recordItemUsage(item.name, item.unitPrice);
     renderFrequentChips();
 
     const mismatchCount = result.lines.filter((line) => line.status === "mismatch").length;

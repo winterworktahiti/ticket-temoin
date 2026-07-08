@@ -54,10 +54,37 @@
           Nom du produit
           <input id="draft-name" type="text" placeholder="Ex : Lait demi-écrémé 1L" />
         </label>
+
+        <button type="button" id="draft-weight-toggle" class="link-btn" style="text-align:left">
+          Vendu au poids (F/kg) ?
+        </button>
+
+        <div id="draft-price-simple">
+          <label class="field-label">
+            Prix en rayon (XPF)
+            <input id="draft-price" type="text" inputmode="numeric" placeholder="Ex : 350" />
+          </label>
+        </div>
+
+        <div id="draft-price-weight" hidden>
+          <div class="btn-row">
+            <label class="field-label" style="flex:1">
+              Poids (kg)
+              <input id="draft-weight-kg" type="text" inputmode="decimal" placeholder="Ex : 0.350" />
+            </label>
+            <label class="field-label" style="flex:1">
+              Prix au kg (XPF)
+              <input id="draft-price-per-kg" type="text" inputmode="numeric" placeholder="Ex : 1495" />
+            </label>
+          </div>
+          <p id="draft-weight-total" class="hint-text"></p>
+        </div>
+
         <label class="field-label">
-          Prix en rayon (XPF)
-          <input id="draft-price" type="text" inputmode="numeric" placeholder="Ex : 350" />
+          Quantité
+          <input id="draft-quantity" type="text" inputmode="numeric" value="1" />
         </label>
+
         <div class="btn-row">
           <button type="button" id="draft-confirm" class="btn btn-primary">Ajouter au ticket</button>
           <button type="button" id="draft-cancel" class="btn btn-outline">Annuler</button>

@@ -195,7 +195,10 @@ async function handleMatch(request, env) {
     }
 
     const itemsDescription = items
-      .map((item) => `- id="${item.id}" nom="${item.name}" prix_rayon=${item.shelfPrice}`)
+      .map((item) => {
+        const qty = typeof item.quantity === "number" && item.quantity > 1 ? ` (quantité: ${item.quantity})` : "";
+        return `- id="${item.id}" nom="${item.name}" prix_total_attendu=${item.shelfPrice}${qty}`;
+      })
       .join("\n");
 
     const multiPhotoNote =
@@ -205,12 +208,12 @@ async function handleMatch(request, env) {
 
     const systemPrompt = `Tu compares un ticket de courses (constitué en rayon) avec ${images.length > 1 ? "les photos" : "la photo"} du ticket de caisse final, pour un outil de vérification de prix en Polynésie française (arrêté n°170 CM).
 ${multiPhotoNote}
-Voici les articles du panier, avec leur prix relevé en rayon (en Francs Pacifique, XPF) :
+Voici les articles du panier. "prix_total_attendu" est le prix TOTAL attendu pour cet article (déjà multiplié par la quantité si elle est indiquée) :
 ${itemsDescription}
 
 Procède en deux temps, dans cet ordre :
 1. Transcris D'ABORD toutes les lignes produit du ticket de caisse que tu peux lire sur l'ensemble des photos, avec leur prix exact (en XPF, entier, sans symbole). Un ticket de supermarché a en général une ligne d'intitulé produit suivie d'un code-barre en dessous : ignore le code-barre, ne prends que le nom et le prix. Sois exhaustif, ne saute aucune ligne même si elle te semble déjà correspondre à un article du panier.
-2. Ensuite seulement, pour CHAQUE article du panier ci-dessus, retrouve dans ta transcription la ligne qui correspond le mieux (par similarité de nom, même si l'intitulé de caisse est abrégé ou tronqué), et reporte son prix exact. N'invente jamais un prix : si après une lecture attentive aucune ligne ne correspond clairement, mets receipt_price à null plutôt que de deviner.
+2. Ensuite seulement, pour CHAQUE article du panier ci-dessus, retrouve dans ta transcription la ou les lignes qui correspondent (par similarité de nom, même si l'intitulé de caisse est abrégé ou tronqué). Si une quantité est indiquée pour l'article, le ticket peut soit répéter la ligne plusieurs fois (additionne alors leurs prix), soit n'avoir qu'une seule ligne dont le prix reflète déjà le total pour cette quantité : dans les deux cas, "receipt_price" doit être le prix TOTAL correspondant à la quantité entière de cet article, comparable directement à "prix_total_attendu". N'invente jamais un prix : si après une lecture attentive aucune ligne ne correspond clairement, mets receipt_price à null plutôt que de deviner.
 
 Réponds UNIQUEMENT avec un objet JSON strict, sans texte autour, au format exact :
 {
