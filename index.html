@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Ticket Témoin, vérifie ton prix</title>
+  <meta name="description" content="Compare le prix en rayon et le prix facturé sur ton ticket de caisse en Polynésie française (arrêté n°170 CM)." />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <header class="site-header">
+    <div class="wrap">
+      <p class="eyebrow">Vérification citoyenne</p>
+      <h1>Ticket Témoin</h1>
+      <p class="intro">
+        Note le prix affiché en rayon au fil de tes courses, puis compare avec ton ticket de
+        caisse final. En Polynésie française, l'arrêté n°170 CM protège ton droit à payer le
+        prix annoncé.
+      </p>
+    </div>
+    <!-- Ad slot (leaderboard, optional): drop your ad network's embed code here.
+         Keeping it in the header, outside .wrap, keeps it visually separate from
+         the tool itself so it doesn't get mistaken for part of the flow. -->
+    <div id="ad-slot-header" class="ad-slot ad-slot-header" hidden></div>
+  </header>
+
+  <main class="wrap">
+    <section id="add-item-panel" class="card">
+      <p class="card-title">Ajouter un article</p>
+      <div id="frequent-chips" class="chip-row" hidden></div>
+
+      <div id="add-item-choices" class="choice-grid">
+        <button type="button" class="choice-btn" data-mode="shelf">
+          <span class="choice-icon">📷</span>
+          Étiquette
+        </button>
+        <button type="button" class="choice-btn" data-mode="barcode">
+          <span class="choice-icon">🏷️</span>
+          Code-barre
+        </button>
+        <button type="button" class="choice-btn" data-mode="manual">
+          <span class="choice-icon">✏️</span>
+          Manuel
+        </button>
+      </div>
+
+      <input id="photo-input" type="file" accept="image/*" capture="environment" hidden />
+
+      <p id="scan-status" class="status-text" hidden></p>
+      <p id="scan-error" class="error-text" hidden></p>
+
+      <div id="draft-form" class="draft-form" hidden>
+        <label class="field-label">
+          Nom du produit
+          <input id="draft-name" type="text" placeholder="Ex : Lait demi-écrémé 1L" />
+        </label>
+        <label class="field-label">
+          Prix en rayon (XPF)
+          <input id="draft-price" type="text" inputmode="numeric" placeholder="Ex : 350" />
+        </label>
+        <div class="btn-row">
+          <button type="button" id="draft-confirm" class="btn btn-primary">Ajouter au ticket</button>
+          <button type="button" id="draft-cancel" class="btn btn-outline">Annuler</button>
+        </div>
+      </div>
+    </section>
+
+    <section id="ticket-list-section" class="card" hidden>
+      <div class="row-between">
+        <p class="card-title" id="ticket-count-label">Ticket en cours</p>
+        <p class="card-title" id="ticket-total-label"></p>
+      </div>
+      <ul id="ticket-list" class="ticket-list"></ul>
+    </section>
+
+    <section id="receipt-section" class="card muted">
+      <p class="card-title">Ticket de caisse final</p>
+      <p id="receipt-hint" class="hint-text">
+        Ajoute d'abord au moins un article ci-dessus pour débloquer cette étape.
+      </p>
+
+      <button type="button" id="receipt-slot" class="photo-slot" disabled>
+        <img id="receipt-preview" hidden />
+        <span id="receipt-placeholder" class="photo-placeholder">
+          <span class="choice-icon">📷</span>
+          Photographie tout le ticket, bien à plat
+        </span>
+      </button>
+      <input id="receipt-input" type="file" accept="image/*" capture="environment" hidden />
+      <button type="button" id="receipt-remove" class="link-btn" hidden>Retirer</button>
+
+      <button type="button" id="compare-btn" class="btn btn-primary btn-block" disabled>
+        Comparer (ajoute un article d'abord)
+      </button>
+
+      <p id="compare-error" class="error-text" hidden></p>
+    </section>
+
+    <section id="result-section" hidden></section>
+
+    <section id="history-section" class="card" hidden>
+      <div class="row-between">
+        <p class="card-title">Historique de tes trajets</p>
+        <button type="button" id="history-clear" class="link-btn">Effacer</button>
+      </div>
+      <ul id="history-list" class="history-list"></ul>
+    </section>
+
+    <p class="fine-print">
+      Les photos sont analysées ponctuellement pour extraire les prix et ne sont pas
+      conservées. L'historique et les articles fréquents restent uniquement sur cet appareil.
+      En cas d'écart constaté, tu peux invoquer l'arrêté n°170 CM auprès du commerçant : le
+      prix affiché en rayon fait foi.
+    </p>
+
+    <!-- Ad slot (in-content, optional): a native/display unit between the tool
+         and the footer. Hidden until you wire up a real ad network's script. -->
+    <div id="ad-slot-content" class="ad-slot ad-slot-content" hidden></div>
+  </main>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
