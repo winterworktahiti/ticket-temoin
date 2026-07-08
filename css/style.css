@@ -44,12 +44,12 @@ body {
 
 .site-header {
   position: relative;
-  border-bottom: 1px solid rgba(23, 21, 15, 0.15);
-  padding: 32px 0 40px;
+  background: var(--tt-navy);
+  padding: 28px 0 36px;
 }
 
 /* Signature element: a perforated ticket-stub edge, like tearing off a
-   receipt. Two stacked radial-gradient rows of "holes" punched through. */
+   receipt. Punches "holes" through the green band down to the paper below. */
 .site-header::after {
   content: "";
   position: absolute;
@@ -63,30 +63,21 @@ body {
   background-position: 0 0;
 }
 
-.eyebrow {
-  margin: 0;
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.2em;
-  text-transform: uppercase;
-  color: var(--tt-teal);
-}
-
 h1 {
   margin: 6px 0 0;
   font-family: var(--font-display);
-  font-size: 42px;
+  font-size: 40px;
   font-weight: 400;
   letter-spacing: 0.02em;
   text-transform: uppercase;
-  color: var(--tt-navy);
+  color: var(--tt-sand);
   line-height: 1;
 }
 
 .title-row {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 16px;
 }
 
 .title-row h1 {
@@ -95,15 +86,15 @@ h1 {
 
 .vigile-badge-btn {
   flex-shrink: 0;
-  width: 56px;
-  height: 56px;
+  width: 76px;
+  height: 76px;
   border-radius: 999px;
-  border: none;
+  border: 3px solid var(--tt-sand);
   padding: 0;
   overflow: hidden;
   cursor: pointer;
-  background: transparent;
-  box-shadow: 0 2px 8px rgba(23, 21, 15, 0.25);
+  background: var(--tt-navy-deep);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3);
   transition: transform 0.15s ease;
 }
 
@@ -122,10 +113,10 @@ h1 {
 }
 
 .intro {
-  margin: 8px 0 0;
+  margin: 12px 0 0;
   font-size: 14px;
   line-height: 1.6;
-  color: rgba(28, 43, 46, 0.75);
+  color: rgba(243, 239, 220, 0.85);
 }
 
 main.wrap {
