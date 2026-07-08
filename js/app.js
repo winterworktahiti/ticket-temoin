@@ -148,6 +148,13 @@ function editItem(id) {
   draftFormEl.scrollIntoView({ behavior: "smooth", block: "center" });
 }
 
+draftNameEl.addEventListener("input", () => {
+  if (!editingItemId && draftNameEl.value.trim().toLowerCase() === "vigile") {
+    showVigileEasterEgg();
+    resetDraft();
+  }
+});
+
 draftWeightToggleEl.addEventListener("click", () => {
   weightModeOn = !weightModeOn;
   draftPriceSimpleEl.hidden = weightModeOn;
@@ -227,6 +234,12 @@ $("draft-cancel").addEventListener("click", resetDraft);
 $("draft-confirm").addEventListener("click", () => {
   const name = draftNameEl.value.trim();
   if (!name) return;
+
+  if (!editingItemId && name.toLowerCase() === "vigile") {
+    showVigileEasterEgg();
+    resetDraft();
+    return;
+  }
 
   let unitPrice;
   let quantity = Math.max(1, Math.round(Number(draftQuantityEl.value)) || 1);
@@ -656,6 +669,10 @@ historyClearEl.addEventListener("click", () => {
 
 $("vigile-close").addEventListener("click", () => {
   $("vigile-easter-egg").hidden = true;
+});
+
+$("vigile-icon-btn").addEventListener("click", () => {
+  showVigileEasterEgg();
 });
 
 // ---------------------------------------------------------------------------
