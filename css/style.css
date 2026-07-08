@@ -1,13 +1,18 @@
 :root {
-  --tt-navy: #0e3a45;
-  --tt-navy-deep: #0a2830;
-  --tt-sand: #f6efe1;
-  --tt-sand-dim: #ece1cb;
-  --tt-coral: #e2653b;
-  --tt-coral-dim: #f7ded2;
-  --tt-teal: #2f9e8f;
-  --tt-teal-dim: #dcf0ec;
-  --tt-ink: #1c2b2e;
+  /* Fenua Check design tokens, drawn from the vigile mascot badge:
+     shirt red, monstera-leaf green, thick ink linework, receipt paper. */
+  --tt-navy: #1f4d3a; /* deep tropical green - primary/authority */
+  --tt-navy-deep: #123227;
+  --tt-sand: #f3efdc; /* receipt paper */
+  --tt-sand-dim: #e6dcb8;
+  --tt-coral: #c4302b; /* mascot shirt red - alert/mismatch */
+  --tt-coral-dim: #f3d9d3;
+  --tt-teal: #4c9a6b; /* leaf green - verified/match */
+  --tt-teal-dim: #dcecdf;
+  --tt-ink: #17150f; /* ink black */
+  --tt-gold: #c99a3e; /* stamp/seal accent, used sparingly */
+  --font-display: "Anton", "Arial Narrow", sans-serif;
+  --font-body: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
 }
 
 * {
@@ -28,7 +33,7 @@ body {
   min-height: 100vh;
   background: var(--tt-sand);
   color: var(--tt-ink);
-  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-family: var(--font-body);
 }
 
 .wrap {
@@ -38,54 +43,83 @@ body {
 }
 
 .site-header {
-  border-bottom: 1px solid rgba(14, 58, 69, 0.15);
-  padding: 32px 0;
+  position: relative;
+  border-bottom: 2px solid var(--tt-ink);
+  padding: 32px 0 40px;
+}
+
+/* Signature element: a perforated ticket-stub edge, like tearing off a
+   receipt. Two stacked radial-gradient rows of "holes" punched through. */
+.site-header::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -7px;
+  height: 14px;
+  background-image: radial-gradient(circle, var(--tt-sand) 5px, transparent 5.5px);
+  background-size: 20px 14px;
+  background-repeat: repeat-x;
+  background-position: 0 0;
 }
 
 .eyebrow {
   margin: 0;
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 700;
   letter-spacing: 0.2em;
   text-transform: uppercase;
   color: var(--tt-teal);
 }
 
 h1 {
-  margin: 8px 0 0;
-  font-size: 30px;
-  font-weight: 600;
-  letter-spacing: -0.01em;
+  margin: 6px 0 0;
+  font-family: var(--font-display);
+  font-size: 42px;
+  font-weight: 400;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
   color: var(--tt-navy);
+  line-height: 1;
 }
 
 .title-row {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 14px;
 }
 
 .title-row h1 {
-  margin: 8px 0 0;
+  margin: 0;
 }
 
-.vigile-icon-btn {
-  margin-top: 6px;
-  border: none;
-  background: none;
-  padding: 2px;
+.vigile-badge-btn {
+  flex-shrink: 0;
+  width: 56px;
+  height: 56px;
   border-radius: 999px;
+  border: 2px solid var(--tt-ink);
+  padding: 0;
+  overflow: hidden;
   cursor: pointer;
-  line-height: 0;
+  background: var(--tt-sand);
   transition: transform 0.15s ease;
 }
 
-.vigile-icon-btn:hover {
-  transform: scale(1.15) rotate(-6deg);
+.vigile-badge-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: top center;
+  transform: scale(1.35);
 }
 
-.vigile-icon-btn:active {
-  transform: scale(0.9);
+.vigile-badge-btn:hover {
+  transform: scale(1.1) rotate(-6deg);
+}
+
+.vigile-badge-btn:active {
+  transform: scale(0.92);
 }
 
 .intro {
@@ -104,9 +138,9 @@ main.wrap {
 }
 
 .card {
-  border: 1px solid rgba(14, 58, 69, 0.15);
-  background: rgba(255, 255, 255, 0.6);
-  border-radius: 16px;
+  border: 2px solid var(--tt-ink);
+  background: rgba(255, 255, 255, 0.75);
+  border-radius: 14px;
   padding: 20px;
 }
 
@@ -191,7 +225,7 @@ main.wrap {
   flex-direction: column;
   align-items: center;
   gap: 4px;
-  border: 1px solid rgba(14, 58, 69, 0.2);
+  border: 2px solid var(--tt-ink);
   background: transparent;
   border-radius: 12px;
   padding: 12px 0;
@@ -203,7 +237,7 @@ main.wrap {
 
 .choice-btn-primary {
   background: var(--tt-navy);
-  border-color: var(--tt-navy);
+  border-color: var(--tt-ink);
   color: var(--tt-sand);
   padding: 20px 16px;
   gap: 6px;
@@ -563,6 +597,7 @@ main.wrap {
 .vigile-card {
   max-width: 360px;
   background: var(--tt-sand);
+  border: 2px solid var(--tt-ink);
   border-radius: 20px;
   padding: 28px 24px;
   text-align: center;
@@ -603,8 +638,11 @@ main.wrap {
 
 .vigile-title {
   margin: 8px 0 0;
-  font-size: 18px;
-  font-weight: 700;
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 400;
+  letter-spacing: 0.01em;
+  text-transform: uppercase;
   color: var(--tt-coral);
 }
 
