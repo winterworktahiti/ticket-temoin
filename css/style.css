@@ -234,12 +234,22 @@ main.wrap {
   cursor: pointer;
 }
 
+.choice-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
 .choice-btn-primary {
   background: var(--tt-navy);
   border-color: var(--tt-navy);
   color: var(--tt-sand);
   padding: 20px 16px;
   gap: 6px;
+}
+
+.receipt-add-btn {
+  width: 100%;
+  margin-top: 4px;
 }
 
 .choice-icon-lg {
