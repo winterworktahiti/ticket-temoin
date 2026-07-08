@@ -64,14 +64,33 @@ body {
 }
 
 h1 {
-  margin: 6px 0 0;
+  margin: 0;
   font-family: var(--font-display);
-  font-size: 40px;
+  font-size: 36px;
   font-weight: 400;
   letter-spacing: 0.02em;
   text-transform: uppercase;
-  color: var(--tt-sand);
   line-height: 1;
+}
+
+h1 .title-fenua,
+h1 .title-check {
+  display: block;
+}
+
+h1 .title-fenua {
+  color: var(--tt-sand);
+}
+
+h1 .title-check {
+  color: var(--tt-coral);
+}
+
+.slogan {
+  margin: 8px 0 0;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--tt-sand);
 }
 
 .title-row {
