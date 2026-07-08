@@ -509,6 +509,47 @@ main.wrap {
   justify-content: center;
 }
 
+/* --- Easter egg: "vigile" --- */
+
+.vigile-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(10, 40, 48, 0.6);
+}
+
+.vigile-card {
+  max-width: 360px;
+  background: var(--tt-sand);
+  border-radius: 20px;
+  padding: 28px 24px;
+  text-align: center;
+  box-shadow: 0 20px 60px rgba(10, 40, 48, 0.35);
+}
+
+.vigile-emoji {
+  margin: 0;
+  font-size: 40px;
+}
+
+.vigile-title {
+  margin: 8px 0 0;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--tt-coral);
+}
+
+.vigile-text {
+  margin: 12px 0 20px;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--tt-ink);
+}
+
 /* --- Ad slots: neutral placeholders, styled minimally so any network's embed
      drops in cleanly. Hidden by default (see index.html); unhide once wired. --- */
 

@@ -259,6 +259,10 @@ $("draft-confirm").addEventListener("click", () => {
 });
 
 function addItem(name, unitPrice, quantity = 1) {
+  if (name.trim().toLowerCase() === "vigile") {
+    showVigileEasterEgg();
+    return;
+  }
   const existing = items.find(
     (item) => item.name.toLowerCase() === name.toLowerCase() && item.unitPrice === unitPrice,
   );
@@ -269,6 +273,10 @@ function addItem(name, unitPrice, quantity = 1) {
   }
   renderTicket();
   renderReceiptSection();
+}
+
+function showVigileEasterEgg() {
+  $("vigile-easter-egg").hidden = false;
 }
 
 function removeItem(id) {
@@ -644,6 +652,10 @@ function renderHistory() {
 historyClearEl.addEventListener("click", () => {
   clearTrips();
   renderHistory();
+});
+
+$("vigile-close").addEventListener("click", () => {
+  $("vigile-easter-egg").hidden = true;
 });
 
 // ---------------------------------------------------------------------------
