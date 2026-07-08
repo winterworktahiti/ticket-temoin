@@ -30,18 +30,21 @@
       <div id="frequent-chips" class="chip-row" hidden></div>
 
       <div id="add-item-choices" class="choice-grid">
-        <button type="button" class="choice-btn" data-mode="shelf">
-          <span class="choice-icon">📷</span>
-          Étiquette
+        <button type="button" class="choice-btn choice-btn-primary" data-mode="shelf">
+          <span class="choice-icon-lg">📷</span>
+          <span class="choice-label-lg">Photographier l'étiquette</span>
+          <span class="choice-sublabel">Prix et nom du produit lus automatiquement</span>
         </button>
-        <button type="button" class="choice-btn" data-mode="barcode">
-          <span class="choice-icon">🏷️</span>
-          Code-barre
-        </button>
-        <button type="button" class="choice-btn" data-mode="manual">
-          <span class="choice-icon">✏️</span>
-          Manuel
-        </button>
+        <div class="choice-row-secondary">
+          <button type="button" class="choice-btn choice-btn-secondary" data-mode="barcode">
+            <span class="choice-icon">🏷️</span>
+            Code-barre
+          </button>
+          <button type="button" class="choice-btn choice-btn-secondary" data-mode="manual">
+            <span class="choice-icon">✏️</span>
+            Manuel
+          </button>
+        </div>
       </div>
 
       <input id="photo-input" type="file" accept="image/*" capture="environment" hidden />

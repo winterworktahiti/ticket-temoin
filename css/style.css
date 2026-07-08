@@ -143,8 +143,8 @@ main.wrap {
 
 .choice-grid {
   margin-top: 12px;
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  display: flex;
+  flex-direction: column;
   gap: 8px;
 }
 
@@ -161,6 +161,39 @@ main.wrap {
   font-weight: 500;
   color: var(--tt-navy);
   cursor: pointer;
+}
+
+.choice-btn-primary {
+  background: var(--tt-navy);
+  border-color: var(--tt-navy);
+  color: var(--tt-sand);
+  padding: 20px 16px;
+  gap: 6px;
+}
+
+.choice-icon-lg {
+  font-size: 34px;
+}
+
+.choice-label-lg {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.choice-sublabel {
+  font-size: 12px;
+  font-weight: 400;
+  color: rgba(246, 239, 225, 0.75);
+}
+
+.choice-row-secondary {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
+
+.choice-btn-secondary {
+  padding: 10px 0;
 }
 
 .choice-icon {
