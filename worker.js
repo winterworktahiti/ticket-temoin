@@ -59,7 +59,7 @@ async function callQwenVision(env, { systemPrompt, userText, images }) {
       Authorization: `Bearer ${apiKey}`,
     },
     body: JSON.stringify({
-      model: "qwen-vl-max",
+      model: "qwen3-vl-flash",
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content },
