@@ -1,4 +1,4 @@
-const CACHE_NAME = "fenua-check-v1";
+const CACHE_NAME = "fenua-check-v2";
 const APP_SHELL = [
   "/",
   "/index.html",
@@ -36,16 +36,17 @@ self.addEventListener("fetch", (event) => {
 
   if (event.request.method !== "GET") return;
 
+  // Network-first: always try to fetch the latest version first, so a new
+  // deploy is visible immediately. The cache is only an offline fallback,
+  // never served ahead of a working network response (that was the bug:
+  // a cache-first strategy kept showing an old build indefinitely).
   event.respondWith(
-    caches.match(event.request).then((cached) => {
-      if (cached) return cached;
-      return fetch(event.request)
-        .then((response) => {
-          const copy = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
-          return response;
-        })
-        .catch(() => cached);
-    }),
+    fetch(event.request)
+      .then((response) => {
+        const copy = response.clone();
+        caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
+        return response;
+      })
+      .catch(() => caches.match(event.request)),
   );
 });
