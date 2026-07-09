@@ -608,6 +608,8 @@ function startOver() {
   resultSectionEl.hidden = true;
   resultSectionEl.innerHTML = "";
   $("add-item-panel").hidden = false;
+  ticketSectionEl.hidden = true; // renderTicket() below will re-show it once items exist again
+  receiptSectionEl.hidden = false;
   resetDraft();
   renderTicket();
   renderReceiptSection();
