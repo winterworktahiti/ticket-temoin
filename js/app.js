@@ -481,6 +481,7 @@ compareBtnEl.addEventListener("click", async () => {
 
     for (const item of items) recordItemUsage(item.name, item.unitPrice);
     renderFrequentChips();
+    setTimeout(refreshStatsBadge, 800);
 
     const mismatchCount = result.lines.filter((line) => line.status === "mismatch").length;
     const inconclusiveCount = result.lines.filter((line) => line.status === "inconclusive").length;
@@ -702,14 +703,18 @@ if ("serviceWorker" in navigator) {
   });
 }
 
-fetch("/api/stats")
-  .then((res) => res.json())
-  .then((payload) => {
-    const count = payload?.data?.count ?? 0;
-    if (count > 0) {
-      const badge = $("stats-badge");
-      badge.textContent = `🧾 ${count.toLocaleString("fr-FR")} ticket${count > 1 ? "s" : ""} vérifié${count > 1 ? "s" : ""}`;
-      badge.hidden = false;
-    }
-  })
-  .catch(() => {});
+function refreshStatsBadge() {
+  fetch("/api/stats")
+    .then((res) => res.json())
+    .then((payload) => {
+      const count = payload?.data?.count ?? 0;
+      if (count > 0) {
+        const badge = $("stats-badge");
+        badge.textContent = `🧾 ${count.toLocaleString("fr-FR")} ticket${count > 1 ? "s" : ""} vérifié${count > 1 ? "s" : ""}`;
+        badge.hidden = false;
+      }
+    })
+    .catch(() => {});
+}
+
+refreshStatsBadge();
