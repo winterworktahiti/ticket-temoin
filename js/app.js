@@ -194,8 +194,14 @@ photoInputEl.addEventListener("change", async () => {
   const mode = pendingScanMode;
   if (!file || !mode) return;
 
+  const scanStatusIconEl = $("scan-status-icon");
+  const scanStatusTextEl = $("scan-status-text");
+
   scanStatusEl.hidden = false;
-  scanStatusEl.textContent = "Lecture de la photo...";
+  scanStatusEl.classList.remove("status-success");
+  scanStatusIconEl.classList.add("status-spinner");
+  scanStatusIconEl.textContent = "";
+  scanStatusTextEl.textContent = "Lecture de la photo...";
   scanErrorEl.hidden = true;
   let addedDirectly = false;
 
@@ -207,12 +213,16 @@ photoInputEl.addEventListener("change", async () => {
       // Confident read: add straight to the ticket, no confirmation step.
       // Mistakes can still be fixed with "Modifier" on the ticket line.
       addItem(result.name, Math.round(result.price), 1);
-      scanStatusEl.textContent = `Ajouté : ${result.name} · ${Math.round(result.price).toLocaleString("fr-FR")} XPF`;
+      scanStatusEl.classList.add("status-success");
+      scanStatusIconEl.classList.remove("status-spinner");
+      scanStatusIconEl.textContent = "✅";
+      scanStatusTextEl.textContent = `Ajouté : ${result.name} · ${Math.round(result.price).toLocaleString("fr-FR")} XPF`;
       photoInputEl.value = "";
       pendingScanMode = null;
       addedDirectly = true;
       setTimeout(() => {
         scanStatusEl.hidden = true;
+        scanStatusIconEl.textContent = "";
       }, 2000);
     } else {
       scanErrorEl.hidden = false;

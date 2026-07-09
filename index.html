@@ -70,7 +70,10 @@
 
       <input id="photo-input" type="file" accept="image/*" capture="environment" hidden />
 
-      <p id="scan-status" class="status-text" hidden></p>
+      <p id="scan-status" class="status-text" hidden>
+        <span id="scan-status-icon" class="status-spinner"></span>
+        <span id="scan-status-text"></span>
+      </p>
       <p id="scan-error" class="error-text" hidden></p>
 
       <div id="draft-form" class="draft-form" hidden>
