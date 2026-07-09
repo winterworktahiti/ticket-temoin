@@ -151,7 +151,7 @@ async function handleScan(request, env) {
   }
 }
 
-async function handleMatch(request, env) {
+async function handleMatch(request, env, ctx) {
   try {
     const form = await request.formData();
     const files = form.getAll("receipt").filter((entry) => entry instanceof File);
@@ -262,6 +262,10 @@ Réponds UNIQUEMENT avec un objet JSON strict, sans texte autour, au format exac
     const totalShelf = lines.reduce((sum, l) => sum + l.shelfPrice, 0);
     const totalReceiptMatched = lines.reduce((sum, l) => sum + (l.receiptPrice ?? 0), 0);
 
+    if (ctx && env.STATS_KV) {
+      ctx.waitUntil(incrementStat(env));
+    }
+
     return jsonResponse({
       ok: true,
       data: {
@@ -280,15 +284,42 @@ Réponds UNIQUEMENT avec un objet JSON strict, sans texte autour, au format exac
   }
 }
 
+const STATS_KEY = "tickets_verified_count";
+
+async function incrementStat(env) {
+  try {
+    const current = await env.STATS_KV.get(STATS_KEY);
+    const next = (Number(current) || 0) + 1;
+    await env.STATS_KV.put(STATS_KEY, String(next));
+  } catch {
+    // Non-critical: never let a stats-counting failure affect the user.
+  }
+}
+
+async function handleStats(env) {
+  try {
+    if (!env.STATS_KV) {
+      return jsonResponse({ ok: true, data: { count: 0 } });
+    }
+    const current = await env.STATS_KV.get(STATS_KEY);
+    return jsonResponse({ ok: true, data: { count: Number(current) || 0 } });
+  } catch {
+    return jsonResponse({ ok: true, data: { count: 0 } });
+  }
+}
+
 export default {
-  async fetch(request, env) {
+  async fetch(request, env, ctx) {
     const url = new URL(request.url);
 
     if (request.method === "POST" && url.pathname === "/api/scan") {
       return handleScan(request, env);
     }
     if (request.method === "POST" && url.pathname === "/api/match") {
-      return handleMatch(request, env);
+      return handleMatch(request, env, ctx);
+    }
+    if (request.method === "GET" && url.pathname === "/api/stats") {
+      return handleStats(env);
     }
 
     // Anything else (including GET on /api/*): fall through to static assets.

@@ -141,6 +141,20 @@ h1 .title-check {
   color: rgba(243, 239, 220, 0.85);
 }
 
+.stats-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 14px 0 0;
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: rgba(243, 239, 220, 0.15);
+  border: 1px solid rgba(243, 239, 220, 0.3);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--tt-sand);
+}
+
 main.wrap {
   display: flex;
   flex-direction: column;

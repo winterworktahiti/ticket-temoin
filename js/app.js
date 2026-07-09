@@ -701,3 +701,15 @@ if ("serviceWorker" in navigator) {
     navigator.serviceWorker.register("/sw.js").catch(() => {});
   });
 }
+
+fetch("/api/stats")
+  .then((res) => res.json())
+  .then((payload) => {
+    const count = payload?.data?.count ?? 0;
+    if (count > 0) {
+      const badge = $("stats-badge");
+      badge.textContent = `🧾 ${count.toLocaleString("fr-FR")} ticket${count > 1 ? "s" : ""} vérifié${count > 1 ? "s" : ""}`;
+      badge.hidden = false;
+    }
+  })
+  .catch(() => {});
