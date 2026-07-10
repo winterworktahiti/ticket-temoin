@@ -585,6 +585,12 @@ function renderResult(result) {
     linesCard.appendChild(extra);
   }
 
+  const downloadProofBtn = document.createElement("button");
+  downloadProofBtn.type = "button";
+  downloadProofBtn.className = "btn btn-primary btn-block";
+  downloadProofBtn.textContent = "Télécharger le justificatif";
+  downloadProofBtn.addEventListener("click", () => downloadProof(result));
+
   const startOverBtn = document.createElement("button");
   startOverBtn.type = "button";
   startOverBtn.className = "btn btn-outline btn-block";
@@ -604,10 +610,109 @@ function renderResult(result) {
         comparaison au service client ou à la caisse.
       </p>
     `;
-    resultSectionEl.append(summary, linesCard, notice, startOverBtn);
+    resultSectionEl.append(summary, linesCard, notice, downloadProofBtn, startOverBtn);
   } else {
-    resultSectionEl.append(summary, linesCard, startOverBtn);
+    resultSectionEl.append(summary, linesCard, downloadProofBtn, startOverBtn);
   }
+}
+
+async function downloadProof(result) {
+  const width = 800;
+  const padding = 32;
+  const lineHeight = 56;
+  const headerHeight = 100;
+  const maxPhotoHeight = 360;
+
+  const loadedPhotos = await Promise.all(
+    receiptPhotos.map(
+      (photo) =>
+        new Promise((resolve) => {
+          const img = new Image();
+          img.onload = () => resolve(img);
+          img.onerror = () => resolve(null);
+          img.src = photo.previewUrl;
+        }),
+    ),
+  );
+  const photos = loadedPhotos.filter(Boolean);
+
+  const photoDisplayWidth = width - padding * 2;
+  const photoHeights = photos.map((img) =>
+    Math.min(maxPhotoHeight, (img.height / img.width) * photoDisplayWidth),
+  );
+  const photosBlockHeight =
+    photos.length > 0 ? 30 + photoHeights.reduce((sum, h) => sum + h + 12, 0) : 0;
+
+  const linesBlockHeight = 30 + result.lines.length * lineHeight;
+  const footerHeight = 70;
+  const totalHeight =
+    headerHeight + padding + linesBlockHeight + photosBlockHeight + footerHeight + padding;
+
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = totalHeight;
+  const ctx = canvas.getContext("2d");
+
+  // Background
+  ctx.fillStyle = "#f3efdc";
+  ctx.fillRect(0, 0, width, totalHeight);
+
+  // Header band
+  ctx.fillStyle = "#1f4d3a";
+  ctx.fillRect(0, 0, width, headerHeight);
+  ctx.fillStyle = "#f3efdc";
+  ctx.font = "bold 26px sans-serif";
+  ctx.fillText("Fenua Check, justificatif", padding, 44);
+  ctx.font = "14px sans-serif";
+  ctx.fillText(`Vérification du ${new Date().toLocaleString("fr-FR")}`, padding, 72);
+
+  let y = headerHeight + padding;
+  ctx.font = "bold 16px sans-serif";
+  ctx.fillStyle = "#17150f";
+  ctx.fillText("Détail de la vérification", padding, y);
+  y += 30;
+
+  for (const line of result.lines) {
+    ctx.font = "15px sans-serif";
+    ctx.fillStyle = "#17150f";
+    ctx.fillText(line.name, padding, y);
+    const receiptLabel =
+      line.receiptPrice !== null ? `${line.receiptPrice.toLocaleString("fr-FR")} XPF` : "non lu";
+    const priceText = `${line.shelfPrice.toLocaleString("fr-FR")} XPF -> ${receiptLabel}`;
+    ctx.font = "bold 15px sans-serif";
+    ctx.fillStyle =
+      line.status === "mismatch" ? "#c4302b" : line.status === "match" ? "#2f9e8f" : "#666666";
+    ctx.fillText(priceText, padding, y + 22);
+    y += lineHeight;
+  }
+
+  if (photos.length > 0) {
+    y += 6;
+    ctx.font = "bold 16px sans-serif";
+    ctx.fillStyle = "#17150f";
+    ctx.fillText("Photo(s) du ticket de caisse", padding, y);
+    y += 20;
+    photos.forEach((img, i) => {
+      const h = photoHeights[i];
+      ctx.drawImage(img, padding, y, photoDisplayWidth, h);
+      y += h + 12;
+    });
+  }
+
+  ctx.font = "12px sans-serif";
+  ctx.fillStyle = "#555555";
+  ctx.fillText(
+    "En vertu de l'arrêté n°170 CM (Polynésie française), le prix affiché en rayon fait foi.",
+    padding,
+    y + 20,
+  );
+  ctx.fillText("Document généré par Fenua Check, fenuacheck.app", padding, y + 40);
+
+  const dataUrl = canvas.toDataURL("image/png");
+  const a = document.createElement("a");
+  a.href = dataUrl;
+  a.download = `fenua-check-justificatif-${Date.now()}.png`;
+  a.click();
 }
 
 function startOver() {
