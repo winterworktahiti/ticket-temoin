@@ -256,6 +256,27 @@ main.wrap {
   text-decoration: underline;
 }
 
+.support-card {
+  margin-top: 20px;
+}
+
+.support-handle-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.support-handle {
+  font-family: monospace;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--tt-navy);
+  background: var(--tt-sand-dim);
+  padding: 8px 14px;
+  border-radius: 10px;
+}
+
 /* --- Chips (frequent items) --- */
 
 .chip-row {

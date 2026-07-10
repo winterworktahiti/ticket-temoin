@@ -680,6 +680,24 @@ historyClearEl.addEventListener("click", () => {
   renderHistory();
 });
 
+const supportCopyBtn = $("support-copy-btn");
+if (supportCopyBtn) {
+  supportCopyBtn.addEventListener("click", async () => {
+    const handle = $("support-handle").textContent.trim();
+    try {
+      await navigator.clipboard.writeText(handle);
+      supportCopyBtn.textContent = "Copié !";
+      setTimeout(() => {
+        supportCopyBtn.textContent = "Copier";
+      }, 1500);
+    } catch {
+      // Clipboard API unavailable (e.g. very old browser): the handle is
+      // already visible as plain text, so the user can still select and
+      // copy it manually.
+    }
+  });
+}
+
 $("vigile-close").addEventListener("click", () => {
   $("vigile-easter-egg").hidden = true;
 });
