@@ -5,6 +5,9 @@
 // everything else falls straight through to the static assets binding.
 
 const SHELF_PROMPT = `Tu regardes une photo d'une étiquette de prix en rayon dans un supermarché de Polynésie française.
+
+Important sur le format des prix : la monnaie est le Franc Pacifique (XPF), qui n'a PAS de centimes (toujours un nombre entier). Sur les étiquettes, un POINT dans le prix est un SÉPARATEUR DE MILLIERS, jamais une virgule décimale. Par exemple, un prix affiché "3.950" signifie 3950 XPF, PAS 3,95 ni 4. Un prix affiché "1.200" signifie 1200 XPF. Ne divise et n'arrondis jamais un prix à cause d'un point : retire simplement le point pour obtenir le nombre entier.
+
 Réponds UNIQUEMENT avec un objet JSON strict, sans texte autour :
 {
   "name": string|null,
@@ -212,7 +215,7 @@ Voici les articles du panier. "prix_total_attendu" est le prix TOTAL attendu pou
 ${itemsDescription}
 
 Procède en deux temps, dans cet ordre :
-1. Transcris D'ABORD toutes les lignes produit du ticket de caisse que tu peux lire sur l'ensemble des photos, avec leur prix exact (en XPF, entier, sans symbole). Un ticket de supermarché a en général une ligne d'intitulé produit suivie d'un code-barre en dessous : ignore le code-barre, ne prends que le nom et le prix. Sois exhaustif, ne saute aucune ligne même si elle te semble déjà correspondre à un article du panier.
+1. Transcris D'ABORD toutes les lignes produit du ticket de caisse que tu peux lire sur l'ensemble des photos, avec leur prix exact (en XPF, entier, sans symbole). Un ticket de supermarché a en général une ligne d'intitulé produit suivie d'un code-barre en dessous : ignore le code-barre, ne prends que le nom et le prix. Sois exhaustif, ne saute aucune ligne même si elle te semble déjà correspondre à un article du panier. Important sur le format : le XPF n'a PAS de centimes ; un point dans un prix imprimé est un séparateur de milliers, jamais une virgule décimale (ex: "3.950" veut dire 3950, pas 3,95 ni 4).
 2. Ensuite seulement, pour CHAQUE article du panier ci-dessus, retrouve dans ta transcription la ou les lignes qui correspondent (par similarité de nom, même si l'intitulé de caisse est abrégé ou tronqué). Si une quantité est indiquée pour l'article, le ticket peut soit répéter la ligne plusieurs fois (additionne alors leurs prix), soit n'avoir qu'une seule ligne dont le prix reflète déjà le total pour cette quantité : dans les deux cas, "receipt_price" doit être le prix TOTAL correspondant à la quantité entière de cet article, comparable directement à "prix_total_attendu". N'invente jamais un prix : si après une lecture attentive aucune ligne ne correspond clairement, mets receipt_price à null plutôt que de deviner.
 
 Réponds UNIQUEMENT avec un objet JSON strict, sans texte autour, au format exact :
