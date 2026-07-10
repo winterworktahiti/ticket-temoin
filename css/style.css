@@ -241,6 +241,12 @@ main.wrap {
   color: rgba(28, 43, 46, 0.5);
 }
 
+.fine-print a,
+.hint-text a {
+  color: var(--tt-navy);
+  font-weight: 600;
+}
+
 .facebook-link {
   display: inline-flex;
   align-items: center;

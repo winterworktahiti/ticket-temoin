@@ -13,5 +13,12 @@
       "binding": "STATS_KV",
       "id": "ae6ae083ae5a4927bfb89ae74353a52d"
     }
+  ],
+  "ratelimits": [
+    {
+      "name": "API_RATE_LIMITER",
+      "namespace_id": "1001",
+      "simple": { "limit": 20, "period": 60 }
+    }
   ]
 }

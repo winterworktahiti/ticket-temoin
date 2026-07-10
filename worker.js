@@ -311,6 +311,21 @@ async function handleStats(env) {
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
+    const isMetered = request.method === "POST" && (url.pathname === "/api/scan" || url.pathname === "/api/match");
+
+    if (isMetered && env.API_RATE_LIMITER) {
+      const ip = request.headers.get("cf-connecting-ip") || "unknown";
+      const { success } = await env.API_RATE_LIMITER.limit({ key: ip });
+      if (!success) {
+        return jsonResponse(
+          {
+            ok: false,
+            error: "Trop de vérifications en peu de temps, réessaie dans une minute.",
+          },
+          429,
+        );
+      }
+    }
 
     if (request.method === "POST" && url.pathname === "/api/scan") {
       return handleScan(request, env);
