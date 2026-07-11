@@ -10,6 +10,11 @@ import {
   saveCurrentItems,
   clearCurrentItems,
 } from "./ticket-history.js";
+import {
+  savePersistedPhotos,
+  loadPersistedPhotos,
+  clearPersistedPhotos,
+} from "./photo-store.js";
 
 // ---------------------------------------------------------------------------
 // State
@@ -410,6 +415,7 @@ function renderReceiptSection() {
 }
 
 function renderReceiptPhotos() {
+  savePersistedPhotos(receiptPhotos);
   receiptPhotosEl.innerHTML = "";
   for (const photo of receiptPhotos) {
     const thumb = document.createElement("div");
@@ -502,6 +508,7 @@ compareBtnEl.addEventListener("click", async () => {
     });
     renderHistory();
     clearCurrentItems();
+    clearPersistedPhotos();
 
     // Hide the input flow, show only the result + a "start over" affordance.
     $("add-item-panel").hidden = true;
@@ -827,6 +834,14 @@ renderFrequentChips();
 renderTicket();
 renderReceiptSection();
 renderHistory();
+
+loadPersistedPhotos().then((restored) => {
+  if (restored.length > 0) {
+    receiptPhotos = restored;
+    renderReceiptPhotos();
+    renderReceiptSection();
+  }
+});
 
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
