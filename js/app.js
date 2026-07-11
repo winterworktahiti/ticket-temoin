@@ -6,6 +6,9 @@ import {
   recordItemUsage,
   saveTrip,
   clearTrips,
+  getCurrentItems,
+  saveCurrentItems,
+  clearCurrentItems,
 } from "./ticket-history.js";
 
 // ---------------------------------------------------------------------------
@@ -325,6 +328,8 @@ function changeItemQuantity(id, delta) {
 // ---------------------------------------------------------------------------
 
 function renderTicket() {
+  saveCurrentItems(items);
+
   if (items.length === 0) {
     ticketSectionEl.hidden = true;
     ticketListEl.innerHTML = "";
@@ -496,6 +501,7 @@ compareBtnEl.addEventListener("click", async () => {
       inconclusiveCount,
     });
     renderHistory();
+    clearCurrentItems();
 
     // Hide the input flow, show only the result + a "start over" affordance.
     $("add-item-panel").hidden = true;
@@ -814,6 +820,8 @@ $("vigile-icon-btn").addEventListener("click", () => {
 // ---------------------------------------------------------------------------
 // Init
 // ---------------------------------------------------------------------------
+
+items = getCurrentItems();
 
 renderFrequentChips();
 renderTicket();

@@ -1,5 +1,6 @@
 const TRIPS_KEY = "ticket-temoin:trips";
 const FREQUENT_KEY = "ticket-temoin:frequent";
+const CURRENT_ITEMS_KEY = "ticket-temoin:current-items";
 
 function readJson(key, fallback) {
   try {
@@ -31,6 +32,18 @@ export function saveTrip(trip) {
 
 export function clearTrips() {
   writeJson(TRIPS_KEY, []);
+}
+
+export function getCurrentItems() {
+  return readJson(CURRENT_ITEMS_KEY, []);
+}
+
+export function saveCurrentItems(items) {
+  writeJson(CURRENT_ITEMS_KEY, items);
+}
+
+export function clearCurrentItems() {
+  writeJson(CURRENT_ITEMS_KEY, []);
 }
 
 export function getFrequentItems() {
