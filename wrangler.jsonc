@@ -3,6 +3,9 @@
   "name": "ticket-temoin",
   "main": "worker.js",
   "compatibility_date": "2026-07-08",
+  "vars": {
+    "QWEN_BASE_URL": "https://dashscope-intl.aliyuncs.com/compatible-mode/v1"
+  },
   "assets": {
     "directory": "./",
     "binding": "ASSETS",
