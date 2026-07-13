@@ -23,6 +23,7 @@ import {
 let items = []; // { id, name, unitPrice, quantity }
 let receiptPhotos = []; // { id, file, previewUrl }
 let pendingScanMode = null; // "shelf" | "barcode" while a photo picker is open
+let pendingBarcode = null; // barcode from the last barcode scan, until the item is confirmed
 let weightModeOn = false;
 let editingItemId = null;
 
@@ -128,6 +129,7 @@ function resetDraft() {
   scanErrorEl.hidden = true;
   photoInputEl.value = "";
   pendingScanMode = null;
+  pendingBarcode = null;
   $("draft-confirm").textContent = "Ajouter au ticket";
 }
 
@@ -189,6 +191,7 @@ addItemChoicesEl.addEventListener("click", (event) => {
   scanErrorEl.hidden = true;
 
   if (mode === "manual") {
+    pendingBarcode = null;
     showDraft("", "");
     return;
   }
@@ -232,6 +235,11 @@ photoInputEl.addEventListener("change", async () => {
         scanStatusEl.hidden = true;
         scanStatusIconEl.textContent = "";
       }, 2000);
+    } else if (mode === "barcode" && result.readable && (result.name || result.barcode)) {
+      // Normal for a barcode scan: packaging rarely shows a price, so this
+      // isn't a failure, just needs the price filled in manually.
+      pendingBarcode = result.barcode ?? null;
+      showDraft(result.name ?? "", "");
     } else {
       scanErrorEl.hidden = false;
       scanErrorEl.textContent =
@@ -274,6 +282,8 @@ $("draft-confirm").addEventListener("click", () => {
     unitPrice = Math.round(unitPrice);
   }
 
+  const barcodeForShare = editingItemId ? null : pendingBarcode;
+
   if (editingItemId) {
     const item = items.find((i) => i.id === editingItemId);
     if (item) {
@@ -287,6 +297,69 @@ $("draft-confirm").addEventListener("click", () => {
     addItem(name, unitPrice, quantity);
   }
   resetDraft();
+
+  if (barcodeForShare) {
+    showSharePricePrompt(barcodeForShare, name, unitPrice);
+  }
+});
+
+let pendingSharePrice = null; // { barcode, name, price } awaiting a store choice
+
+function showSharePricePrompt(barcode, name, price) {
+  pendingSharePrice = { barcode, name, price };
+  const card = $("share-price-card");
+  const status = $("share-status");
+  $("share-store-select").value = "";
+  $("share-store-other").value = "";
+  $("share-store-other-wrap").hidden = true;
+  status.hidden = true;
+  card.hidden = false;
+  card.scrollIntoView({ behavior: "smooth", block: "center" });
+}
+
+function hideSharePricePrompt() {
+  pendingSharePrice = null;
+  $("share-price-card").hidden = true;
+}
+
+$("share-store-select").addEventListener("change", (event) => {
+  $("share-store-other-wrap").hidden = event.target.value !== "__autre__";
+});
+
+$("share-decline").addEventListener("click", hideSharePricePrompt);
+
+$("share-confirm").addEventListener("click", async () => {
+  if (!pendingSharePrice) return;
+  const selectEl = $("share-store-select");
+  const store =
+    selectEl.value === "__autre__" ? $("share-store-other").value.trim() : selectEl.value;
+  if (!store) return;
+
+  const statusEl = $("share-status");
+  statusEl.hidden = false;
+  statusEl.textContent = "Partage en cours...";
+
+  try {
+    const res = await fetch("/api/price-contribute", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        barcode: pendingSharePrice.barcode,
+        name: pendingSharePrice.name,
+        store,
+        price: pendingSharePrice.price,
+      }),
+    });
+    const payload = await res.json();
+    if (payload.ok) {
+      statusEl.textContent = "Merci, prix partagé ! 🙏";
+      setTimeout(hideSharePricePrompt, 1500);
+    } else {
+      statusEl.textContent = payload.error || "Le partage a échoué.";
+    }
+  } catch {
+    statusEl.textContent = "Le partage a échoué (connexion).";
+  }
 });
 
 function addItem(name, unitPrice, quantity = 1) {

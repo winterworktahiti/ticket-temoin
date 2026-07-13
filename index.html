@@ -57,6 +57,11 @@
         prix annoncé.
       </p>
       <p id="stats-badge" class="stats-badge" hidden></p>
+      <p style="margin-top:12px;">
+        <a href="comparer.html" style="color: var(--tt-sand); font-weight: 700; font-size: 13px; text-decoration: underline;">
+          Comparer les prix entre magasins →
+        </a>
+      </p>
     </div>
     <!-- Ad slot (leaderboard, optional): drop your ad network's embed code here.
          Keeping it in the header, outside .wrap, keeps it visually separate from
@@ -135,6 +140,41 @@
           <button type="button" id="draft-confirm" class="btn btn-primary">Ajouter au ticket</button>
           <button type="button" id="draft-cancel" class="btn btn-outline">Annuler</button>
         </div>
+      </div>
+
+      <div id="share-price-card" class="draft-form" hidden>
+        <p class="card-title" style="margin:0;">Partager ce prix ?</p>
+        <p class="hint-text">
+          Aide les autres à comparer les prix entre magasins. Anonyme, seulement le produit,
+          le prix et le magasin sont partagés.
+        </p>
+        <label class="field-label">
+          Magasin
+          <select id="share-store-select">
+            <option value="">Choisis un magasin</option>
+            <option value="Carrefour Punaauia">Carrefour Punaauia</option>
+            <option value="Carrefour Arue">Carrefour Arue</option>
+            <option value="Carrefour Taravao">Carrefour Taravao</option>
+            <option value="Carrefour Plaza Faa'a">Carrefour Plaza Faa'a</option>
+            <option value="Hyper U Pirae">Hyper U Pirae</option>
+            <option value="Super U Faa'a">Super U Faa'a</option>
+            <option value="Super U Taravao">Super U Taravao</option>
+            <option value="Super U Mahina">Super U Mahina</option>
+            <option value="Super U Bora Bora">Super U Bora Bora</option>
+            <option value="Super U Huahine">Super U Huahine</option>
+            <option value="Champion Paofai">Champion Paofai</option>
+            <option value="__autre__">Autre...</option>
+          </select>
+        </label>
+        <label class="field-label" id="share-store-other-wrap" hidden>
+          Nom du magasin
+          <input id="share-store-other" type="text" placeholder="Ex : Easy Market Punaauia" />
+        </label>
+        <div class="btn-row">
+          <button type="button" id="share-confirm" class="btn btn-primary">Partager</button>
+          <button type="button" id="share-decline" class="btn btn-outline">Non merci</button>
+        </div>
+        <p id="share-status" class="hint-text" hidden></p>
       </div>
     </section>
 

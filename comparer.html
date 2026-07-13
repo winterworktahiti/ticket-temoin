@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Comparer les prix, Fenua Check</title>
+  <meta name="description" content="Compare le prix d'un produit entre plusieurs magasins de Polynésie française, à partir des prix partagés par la communauté." />
+  <link rel="icon" type="image/png" sizes="180x180" href="img/vigile-favicon.png" />
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#1f4d3a" />
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+</head>
+<body>
+  <header class="site-header">
+    <div class="wrap">
+      <div class="title-row">
+        <a href="/" class="vigile-badge-btn" aria-label="Retour à l'accueil">
+          <img src="img/vigile-favicon.png" alt="" class="vigile-badge-img" />
+        </a>
+        <h1><span class="title-fenua">Fenua</span><span class="title-check">Check</span></h1>
+      </div>
+      <p class="intro">
+        Compare le prix d'un produit entre plusieurs magasins, à partir des prix partagés par
+        la communauté (articles ajoutés par code-barre uniquement, pour des comparaisons
+        fiables).
+      </p>
+    </div>
+  </header>
+
+  <main class="wrap" style="padding-top: 32px; padding-bottom: 48px;">
+    <section class="card">
+      <p class="card-title">Chercher un produit</p>
+      <label class="field-label" style="margin-top: 12px;">
+        Nom du produit
+        <input id="search-input" type="text" placeholder="Ex : lait, riz, huile..." />
+      </label>
+      <p id="search-status" class="status-text" hidden>
+        <span class="status-spinner"></span>
+        <span>Recherche...</span>
+      </p>
+      <ul id="search-results" class="ticket-list"></ul>
+      <p id="search-empty" class="hint-text" hidden>Aucun produit trouvé pour cette recherche.</p>
+    </section>
+
+    <section id="compare-section" class="card" style="margin-top: 16px;" hidden>
+      <p class="card-title" id="compare-title">Comparaison</p>
+      <ul id="compare-results" class="ticket-list"></ul>
+      <p id="compare-empty" class="hint-text" hidden>
+        Pas encore de prix partagés pour ce produit. Sois le premier en scannant son code-barre
+        depuis l'accueil !
+      </p>
+    </section>
+
+    <p class="fine-print" style="margin-top: 16px;">
+      Les prix affichés sont partagés volontairement par d'autres utilisateurs lors du scan
+      d'un code-barre (voir <a href="mentions-legales.html">mentions légales et
+      confidentialité</a>). Ils reflètent une date d'observation donnée et peuvent ne plus être
+      à jour.
+    </p>
+
+    <p class="fine-print">
+      <a href="/">← Retour à l'accueil</a>
+    </p>
+  </main>
+
+  <script type="module" src="js/comparer.js"></script>
+</body>
+</html>

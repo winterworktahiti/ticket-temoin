@@ -311,6 +311,131 @@ async function handleStats(env) {
   }
 }
 
+// ---------------------------------------------------------------------------
+// Price comparison (opt-in, barcode-scanned items only)
+// ---------------------------------------------------------------------------
+
+async function ensurePricesTable(db) {
+  await db
+    .prepare(
+      `CREATE TABLE IF NOT EXISTS price_observations (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        barcode TEXT NOT NULL,
+        product_name TEXT NOT NULL,
+        store TEXT NOT NULL,
+        price_xpf INTEGER NOT NULL,
+        observed_at TEXT NOT NULL
+      )`,
+    )
+    .run();
+  await db
+    .prepare(`CREATE INDEX IF NOT EXISTS idx_price_barcode ON price_observations (barcode)`)
+    .run();
+}
+
+async function handlePriceContribute(request, env) {
+  if (!env.PRICES_DB) {
+    return jsonResponse({ ok: false, error: "Base de comparaison indisponible." }, 503);
+  }
+  try {
+    const body = await request.json();
+    const barcode = typeof body.barcode === "string" ? body.barcode.trim() : "";
+    const name = typeof body.name === "string" ? body.name.trim().slice(0, 200) : "";
+    const store = typeof body.store === "string" ? body.store.trim().slice(0, 100) : "";
+    const price = Number(body.price);
+
+    if (!barcode || !name || !store || !Number.isFinite(price) || price <= 0 || price > 10_000_000) {
+      return jsonResponse({ ok: false, error: "Données de contribution invalides." }, 400);
+    }
+
+    await ensurePricesTable(env.PRICES_DB);
+    await env.PRICES_DB.prepare(
+      `INSERT INTO price_observations (barcode, product_name, store, price_xpf, observed_at) VALUES (?, ?, ?, ?, ?)`,
+    )
+      .bind(barcode, name, store, Math.round(price), new Date().toISOString())
+      .run();
+
+    return jsonResponse({ ok: true });
+  } catch (err) {
+    return jsonResponse(
+      { ok: false, error: err instanceof Error ? err.message : "Échec de la contribution." },
+      502,
+    );
+  }
+}
+
+async function handlePriceCompare(request, env) {
+  if (!env.PRICES_DB) {
+    return jsonResponse({ ok: false, error: "Base de comparaison indisponible." }, 503);
+  }
+  const url = new URL(request.url);
+  const barcode = (url.searchParams.get("barcode") || "").trim();
+  if (!barcode) {
+    return jsonResponse({ ok: false, error: "Code-barre manquant." }, 400);
+  }
+  try {
+    await ensurePricesTable(env.PRICES_DB);
+    const { results } = await env.PRICES_DB.prepare(
+      `SELECT store, price_xpf, observed_at, product_name
+       FROM price_observations
+       WHERE barcode = ?
+       ORDER BY observed_at DESC`,
+    )
+      .bind(barcode)
+      .all();
+
+    // Keep only the most recent observation per store.
+    const latestByStore = new Map();
+    let productName = null;
+    for (const row of results) {
+      if (!productName) productName = row.product_name;
+      if (!latestByStore.has(row.store)) {
+        latestByStore.set(row.store, { store: row.store, price: row.price_xpf, date: row.observed_at });
+      }
+    }
+    const stores = Array.from(latestByStore.values()).sort((a, b) => a.price - b.price);
+
+    return jsonResponse({ ok: true, data: { barcode, productName, stores } });
+  } catch (err) {
+    return jsonResponse(
+      { ok: false, error: err instanceof Error ? err.message : "Échec de la recherche." },
+      502,
+    );
+  }
+}
+
+async function handlePriceSearch(request, env) {
+  if (!env.PRICES_DB) {
+    return jsonResponse({ ok: false, error: "Base de comparaison indisponible." }, 503);
+  }
+  const url = new URL(request.url);
+  const q = (url.searchParams.get("q") || "").trim();
+  if (q.length < 2) {
+    return jsonResponse({ ok: true, data: { products: [] } });
+  }
+  try {
+    await ensurePricesTable(env.PRICES_DB);
+    const { results } = await env.PRICES_DB.prepare(
+      `SELECT DISTINCT barcode, product_name
+       FROM price_observations
+       WHERE product_name LIKE ?
+       ORDER BY observed_at DESC
+       LIMIT 20`,
+    )
+      .bind(`%${q}%`)
+      .all();
+    return jsonResponse({
+      ok: true,
+      data: { products: results.map((r) => ({ barcode: r.barcode, name: r.product_name })) },
+    });
+  } catch (err) {
+    return jsonResponse(
+      { ok: false, error: err instanceof Error ? err.message : "Échec de la recherche." },
+      502,
+    );
+  }
+}
+
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
@@ -338,6 +463,15 @@ export default {
     }
     if (request.method === "GET" && url.pathname === "/api/stats") {
       return handleStats(env);
+    }
+    if (request.method === "POST" && url.pathname === "/api/price-contribute") {
+      return handlePriceContribute(request, env);
+    }
+    if (request.method === "GET" && url.pathname === "/api/price-compare") {
+      return handlePriceCompare(request, env);
+    }
+    if (request.method === "GET" && url.pathname === "/api/price-search") {
+      return handlePriceSearch(request, env);
     }
 
     // Anything else (including GET on /api/*): fall through to static assets.
