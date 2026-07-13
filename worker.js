@@ -209,7 +209,7 @@ async function handleMatch(request, env, ctx) {
         ? `\nCe ticket a été photographié en ${images.length} photos successives (le même ticket, des portions différentes : haut, milieu, bas). Traite-les comme un seul ticket continu : ne compte pas deux fois une ligne qui apparaîtrait à la jonction de deux photos.\n`
         : "";
 
-    const systemPrompt = `Tu compares un ticket de courses (constitué en rayon) avec ${images.length > 1 ? "les photos" : "la photo"} du ticket de caisse final, pour un outil de vérification de prix en Polynésie française (arrêté n°170 CM).
+    const systemPrompt = `Tu compares un ticket de courses (constitué en rayon) avec ${images.length > 1 ? "les photos" : "la photo"} du ticket de caisse final, pour un outil de vérification de prix en Polynésie française (arrêté n°170 CM du 7 février 1992).
 ${multiPhotoNote}
 Voici les articles du panier. "prix_total_attendu" est le prix TOTAL attendu pour cet article (déjà multiplié par la quantité si elle est indiquée) :
 ${itemsDescription}

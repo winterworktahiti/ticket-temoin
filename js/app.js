@@ -692,8 +692,8 @@ function renderResult(result) {
     notice.innerHTML = `
       <p style="margin:0;font-size:14px;line-height:1.6;">
         Au moins un prix facturé dépasse le prix affiché en rayon. En vertu de l'arrêté n°170
-        CM, tu es en droit de demander l'application du prix affiché : présente cette
-        comparaison au service client ou à la caisse.
+        CM du 7 février 1992, tu es en droit de demander l'application du prix affiché :
+        présente cette comparaison au service client ou à la caisse.
       </p>
     `;
     resultSectionEl.append(summary, linesCard, notice, downloadProofBtn, startOverBtn);
@@ -788,7 +788,7 @@ async function downloadProof(result) {
   ctx.font = "12px sans-serif";
   ctx.fillStyle = "#555555";
   ctx.fillText(
-    "En vertu de l'arrêté n°170 CM (Polynésie française), le prix affiché en rayon fait foi.",
+    "En vertu de l'arrêté n°170 CM du 7 février 1992 (Polynésie française), le prix affiché en rayon fait foi.",
     padding,
     y + 20,
   );
