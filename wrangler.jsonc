@@ -17,6 +17,13 @@
       "id": "ae6ae083ae5a4927bfb89ae74353a52d"
     }
   ],
+  "d1_databases": [
+    {
+      "binding": "PRICES_DB",
+      "database_name": "fenua-check-prices",
+      "database_id": "d77ed0b1-cec6-4600-9bfd-5bdc47071c5b"
+    }
+  ],
   "ratelimits": [
     {
       "name": "API_RATE_LIMITER",
