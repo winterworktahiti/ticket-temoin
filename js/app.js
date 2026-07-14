@@ -205,6 +205,12 @@ addItemChoicesEl.addEventListener("click", (event) => {
   photoInputEl.click();
 });
 
+function setScanChoicesBusy(busy) {
+  for (const btn of addItemChoicesEl.querySelectorAll(".choice-btn")) {
+    btn.disabled = busy;
+  }
+}
+
 photoInputEl.addEventListener("change", async () => {
   const file = photoInputEl.files?.[0];
   const mode = pendingScanMode;
@@ -213,6 +219,7 @@ photoInputEl.addEventListener("change", async () => {
   const scanStatusIconEl = $("scan-status-icon");
   const scanStatusTextEl = $("scan-status-text");
 
+  setScanChoicesBusy(true);
   scanStatusEl.hidden = false;
   scanStatusEl.classList.remove("status-success");
   scanStatusIconEl.classList.add("status-spinner");
@@ -256,6 +263,7 @@ photoInputEl.addEventListener("change", async () => {
     scanErrorEl.textContent = err instanceof Error ? err.message : "La lecture a échoué.";
     showDraft("", "");
   } finally {
+    setScanChoicesBusy(false);
     if (!addedDirectly) scanStatusEl.hidden = true;
   }
 });
