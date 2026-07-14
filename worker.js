@@ -154,6 +154,86 @@ async function handleScan(request, env) {
   }
 }
 
+function normalizeForCompare(text) {
+  return text
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
+function tokensLooselyMatch(a, b) {
+  if (a === b) return true;
+  // Receipt printouts routinely truncate/abbreviate words (e.g. "SANDWICHE" -> "SAND"),
+  // so treat a >=3 char prefix match either way as the same word.
+  if (a.length >= 3 && b.length >= 3 && (a.startsWith(b) || b.startsWith(a))) return true;
+  return false;
+}
+
+function nameSimilarity(a, b) {
+  const tokensA = [...new Set(normalizeForCompare(a).split(" ").filter((t) => t.length > 1))];
+  const tokensB = [...new Set(normalizeForCompare(b).split(" ").filter((t) => t.length > 1))];
+  if (tokensA.length === 0 || tokensB.length === 0) return 0;
+  let shared = 0;
+  for (const ta of tokensA) if (tokensB.some((tb) => tokensLooselyMatch(ta, tb))) shared += 1;
+  return shared / Math.max(tokensA.length, tokensB.length);
+}
+
+// The model assigns each basket item its receipt line independently, so it can
+// end up giving the same receipt line to two different items (one right, one
+// wrong), producing a false price mismatch on the wrong one. Detect any
+// receipt_line_text reused across items with different ids, keep it only for
+// the item whose name is textually closest to that line, and null out the rest
+// so they show as inconclusive instead of a fabricated mismatch.
+function resolveDuplicateReceiptAssignments(matches, items) {
+  const itemById = new Map(items.map((item) => [item.id, item]));
+  const groups = new Map();
+
+  for (const match of matches) {
+    if (typeof match.receipt_line_text !== "string" || !match.receipt_line_text.trim()) continue;
+    const key = normalizeForCompare(match.receipt_line_text);
+    if (!key) continue;
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(match);
+  }
+
+  for (const group of groups.values()) {
+    if (group.length < 2) continue;
+    let best = null;
+    let bestScore = -1;
+    for (const match of group) {
+      const item = itemById.get(match.id);
+      const score = item ? nameSimilarity(item.name, match.receipt_line_text) : 0;
+      if (score > bestScore) {
+        bestScore = score;
+        best = match;
+      }
+    }
+    for (const match of group) {
+      if (match === best) continue;
+      match.receipt_price = null;
+      match.receipt_line_text = null;
+    }
+  }
+
+  // Beyond duplicate reuse, also catch outright hallucinated matches: if the
+  // assigned receipt line shares not a single word (even truncated) with the
+  // item's own name, it's not a real match — drop it rather than show a
+  // fabricated price gap.
+  for (const match of matches) {
+    if (typeof match.receipt_line_text !== "string" || !match.receipt_line_text.trim()) continue;
+    const item = itemById.get(match.id);
+    if (!item) continue;
+    if (nameSimilarity(item.name, match.receipt_line_text) === 0) {
+      match.receipt_price = null;
+      match.receipt_line_text = null;
+    }
+  }
+
+  return matches;
+}
+
 async function handleMatch(request, env, ctx) {
   try {
     const form = await request.formData();
@@ -217,6 +297,7 @@ ${itemsDescription}
 Procède en deux temps, dans cet ordre :
 1. Transcris D'ABORD toutes les lignes produit du ticket de caisse que tu peux lire sur l'ensemble des photos, avec leur prix exact (en XPF, entier, sans symbole). Un ticket de supermarché a en général une ligne d'intitulé produit suivie d'un code-barre en dessous : ignore le code-barre, ne prends que le nom et le prix. Sois exhaustif, ne saute aucune ligne même si elle te semble déjà correspondre à un article du panier. Important sur le format : le XPF n'a PAS de centimes ; un point dans un prix imprimé est un séparateur de milliers, jamais une virgule décimale (ex: "3.950" veut dire 3950, pas 3,95 ni 4).
 2. Ensuite seulement, pour CHAQUE article du panier ci-dessus, retrouve dans ta transcription la ou les lignes qui correspondent (par similarité de nom, même si l'intitulé de caisse est abrégé ou tronqué). Si une quantité est indiquée pour l'article, le ticket peut soit répéter la ligne plusieurs fois (additionne alors leurs prix), soit n'avoir qu'une seule ligne dont le prix reflète déjà le total pour cette quantité : dans les deux cas, "receipt_price" doit être le prix TOTAL correspondant à la quantité entière de cet article, comparable directement à "prix_total_attendu". N'invente jamais un prix : si après une lecture attentive aucune ligne ne correspond clairement, mets receipt_price à null plutôt que de deviner.
+IMPORTANT — une ligne de ticket ne peut servir qu'à UN SEUL article du panier (sauf répétition légitime pour une quantité du MÊME article). N'assigne jamais la même "receipt_line_text" à deux articles différents du panier : si deux articles semblent proches d'une même ligne, ne l'attribue qu'au plus proche par le nom et laisse "receipt_price" à null pour l'autre. Ne rapproche jamais deux intitulés dont les mots-clés produits ne correspondent pas (ex : "citron" ne correspond pas à "eau", "haricot" ne correspond pas à "liquide").
 
 Réponds UNIQUEMENT avec un objet JSON strict, sans texte autour, au format exact :
 {
@@ -234,7 +315,8 @@ Réponds UNIQUEMENT avec un objet JSON strict, sans texte autour, au format exac
       images,
     });
 
-    const matches = Array.isArray(parsed.matches) ? parsed.matches : [];
+    const rawMatches = Array.isArray(parsed.matches) ? parsed.matches : [];
+    const matches = resolveDuplicateReceiptAssignments(rawMatches, items);
     const unmatchedReceiptLines = Array.isArray(parsed.unmatched_receipt_lines)
       ? parsed.unmatched_receipt_lines
       : [];
