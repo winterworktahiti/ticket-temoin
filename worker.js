@@ -192,8 +192,13 @@ function resolveDuplicateReceiptAssignments(matches, items) {
 
   for (const match of matches) {
     if (typeof match.receipt_line_text !== "string" || !match.receipt_line_text.trim()) continue;
-    const key = normalizeForCompare(match.receipt_line_text);
-    if (!key) continue;
+    if (typeof match.receipt_price !== "number") continue;
+    // Key on text + price: two cart entries for the same product bought
+    // separately (e.g. two weighed items) can legitimately share identical
+    // printed text at different prices — that's not a conflict. Only an
+    // identical (text, price) pair reused across different items is the
+    // actual bug we're guarding against.
+    const key = `${normalizeForCompare(match.receipt_line_text)}|${match.receipt_price}`;
     if (!groups.has(key)) groups.set(key, []);
     groups.get(key).push(match);
   }
