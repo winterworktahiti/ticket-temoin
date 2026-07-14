@@ -809,11 +809,33 @@ async function downloadProof(result) {
   );
   ctx.fillText("Document généré par Fenua Check, fenuacheck.app", padding, y + 40);
 
-  const dataUrl = canvas.toDataURL("image/png");
+  const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/png"));
+  if (!blob) return;
+
+  const fileName = `fenua-check-justificatif-${Date.now()}.png`;
+  const file = new File([blob], fileName, { type: "image/png" });
+
+  // Safari on iOS doesn't reliably honour <a download> for image data (it
+  // just opens the image instead of saving it), so on any device that
+  // supports sharing a file, use the native share/save sheet instead — that's
+  // the only mechanism that reliably lets the user save the full composite
+  // image (comparison + photos), not just view it.
+  if (navigator.canShare && navigator.canShare({ files: [file] })) {
+    try {
+      await navigator.share({ files: [file], title: fileName });
+      return;
+    } catch {
+      // User cancelled the share sheet, or it failed: fall through to the
+      // direct-download link below as a backup.
+    }
+  }
+
+  const blobUrl = URL.createObjectURL(blob);
   const a = document.createElement("a");
-  a.href = dataUrl;
-  a.download = `fenua-check-justificatif-${Date.now()}.png`;
+  a.href = blobUrl;
+  a.download = fileName;
   a.click();
+  setTimeout(() => URL.revokeObjectURL(blobUrl), 10_000);
 }
 
 function startOver() {
