@@ -1,5 +1,10 @@
 const $ = (id) => document.getElementById(id);
 
+const HTML_ESCAPE_MAP = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" };
+function escapeHtml(value) {
+  return String(value ?? "").replace(/[&<>"']/g, (c) => HTML_ESCAPE_MAP[c]);
+}
+
 const searchInput = $("search-input");
 const searchStatus = $("search-status");
 const searchResults = $("search-results");
@@ -82,7 +87,7 @@ async function showComparison(barcode, name) {
       });
       li.innerHTML = `
         <div>
-          <div>${index === 0 ? "🏆 " : ""}${entry.store}</div>
+          <div>${index === 0 ? "🏆 " : ""}${escapeHtml(entry.store)}</div>
           <div class="hint-text">Relevé le ${dateLabel}</div>
         </div>
         <span style="font-weight:700;color:${index === 0 ? "var(--tt-teal)" : "var(--tt-navy)"}">

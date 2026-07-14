@@ -78,6 +78,11 @@ function formatXpf(value) {
   return `${value.toLocaleString("fr-FR")} XPF`;
 }
 
+const HTML_ESCAPE_MAP = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" };
+function escapeHtml(value) {
+  return String(value ?? "").replace(/[&<>"']/g, (c) => HTML_ESCAPE_MAP[c]);
+}
+
 function makeId() {
   return `item-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
@@ -648,8 +653,8 @@ function renderResult(result) {
           : "status-inconclusive";
     row.innerHTML = `
       <div>
-        <div>${line.name}</div>
-        ${line.receiptLineText ? `<div class="hint-text">Ticket : ${line.receiptLineText}</div>` : ""}
+        <div>${escapeHtml(line.name)}</div>
+        ${line.receiptLineText ? `<div class="hint-text">Ticket : ${escapeHtml(line.receiptLineText)}</div>` : ""}
       </div>
       <div class="amounts">
         <span>${formatXpf(line.shelfPrice)}</span>
@@ -668,7 +673,7 @@ function renderResult(result) {
     extra.style.borderTop = "1px solid rgba(14,58,69,0.1)";
     extra.innerHTML = `
       <p class="hint-text">Autres lignes du ticket non rapprochées :</p>
-      <p class="hint-text">${result.unmatchedReceiptLines.join(", ")}</p>
+      <p class="hint-text">${result.unmatchedReceiptLines.map(escapeHtml).join(", ")}</p>
     `;
     linesCard.appendChild(extra);
   }

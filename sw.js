@@ -1,15 +1,21 @@
-const CACHE_NAME = "fenua-check-v2";
+const CACHE_NAME = "fenua-check-v3";
 const APP_SHELL = [
   "/",
   "/index.html",
+  "/comparer.html",
+  "/mentions-legales.html",
   "/css/style.css",
   "/js/app.js",
+  "/js/comparer.js",
   "/js/image-compress.js",
   "/js/ticket-api.js",
   "/js/ticket-history.js",
+  "/js/photo-store.js",
   "/manifest.json",
   "/img/icon-192.png",
   "/img/icon-512.png",
+  "/img/icon-192-maskable.png",
+  "/img/icon-512-maskable.png",
 ];
 
 self.addEventListener("install", (event) => {
