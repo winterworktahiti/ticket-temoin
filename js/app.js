@@ -14,6 +14,10 @@ import {
   savePersistedPhotos,
   loadPersistedPhotos,
   clearPersistedPhotos,
+  saveShelfPhoto,
+  loadShelfPhotos,
+  deleteShelfPhoto,
+  clearShelfPhotos,
 } from "./photo-store.js";
 
 // ---------------------------------------------------------------------------
@@ -235,7 +239,7 @@ photoInputEl.addEventListener("change", async () => {
     if (result.readable && result.name && result.price) {
       // Confident read: add straight to the ticket, no confirmation step.
       // Mistakes can still be fixed with "Modifier" on the ticket line.
-      addItem(result.name, Math.round(result.price), 1);
+      addItem(result.name, Math.round(result.price), 1, false, mode === "shelf" ? compressed : null);
       scanStatusEl.classList.add("status-success");
       scanStatusIconEl.classList.remove("status-spinner");
       scanStatusIconEl.textContent = "✅";
@@ -376,21 +380,29 @@ $("share-confirm").addEventListener("click", async () => {
   }
 });
 
-function addItem(name, unitPrice, quantity = 1, weighed = false) {
+function addItem(name, unitPrice, quantity = 1, weighed = false, shelfPhotoFile = null) {
   if (name.trim().toLowerCase() === "vigile") {
     showVigileEasterEgg();
-    return;
+    return null;
   }
   const existing = items.find(
     (item) => item.name.toLowerCase() === name.toLowerCase() && item.unitPrice === unitPrice && item.weighed === weighed,
   );
+  let item;
   if (existing) {
     existing.quantity += quantity;
+    item = existing;
   } else {
-    items.push({ id: makeId(), name, unitPrice, quantity, weighed });
+    item = { id: makeId(), name, unitPrice, quantity, weighed };
+    items.push(item);
+  }
+  if (shelfPhotoFile && !item.shelfPhoto) {
+    item.shelfPhoto = { file: shelfPhotoFile, previewUrl: URL.createObjectURL(shelfPhotoFile) };
+    saveShelfPhoto(item.id, shelfPhotoFile);
   }
   renderTicket();
   renderReceiptSection();
+  return item;
 }
 
 function showVigileEasterEgg() {
@@ -398,6 +410,11 @@ function showVigileEasterEgg() {
 }
 
 function removeItem(id) {
+  const item = items.find((i) => i.id === id);
+  if (item?.shelfPhoto) {
+    URL.revokeObjectURL(item.shelfPhoto.previewUrl);
+    deleteShelfPhoto(id);
+  }
   items = items.filter((item) => item.id !== id);
   renderTicket();
   renderReceiptSection();
@@ -724,7 +741,16 @@ async function downloadProof(result) {
   const headerHeight = 100;
   const maxPhotoHeight = 360;
 
-  const loadedPhotos = await Promise.all(
+  function truncateToWidth(text, maxWidth) {
+    if (ctx.measureText(text).width <= maxWidth) return text;
+    let truncated = text;
+    while (truncated.length > 1 && ctx.measureText(`${truncated}…`).width > maxWidth) {
+      truncated = truncated.slice(0, -1);
+    }
+    return `${truncated}…`;
+  }
+
+  const loadedReceiptImages = await Promise.all(
     receiptPhotos.map(
       (photo) =>
         new Promise((resolve) => {
@@ -735,19 +761,51 @@ async function downloadProof(result) {
         }),
     ),
   );
-  const photos = loadedPhotos.filter(Boolean);
+  const receiptImages = loadedReceiptImages.filter(Boolean);
+
+  const shelfPhotoEntries = result.lines
+    .map((line) => ({ name: line.name, photo: items.find((i) => i.id === line.id)?.shelfPhoto }))
+    .filter((entry) => entry.photo);
+  const loadedShelfImages = await Promise.all(
+    shelfPhotoEntries.map(
+      (entry) =>
+        new Promise((resolve) => {
+          const img = new Image();
+          img.onload = () => resolve({ img, name: entry.name });
+          img.onerror = () => resolve(null);
+          img.src = entry.photo.previewUrl;
+        }),
+    ),
+  );
+  const shelfImages = loadedShelfImages.filter(Boolean);
 
   const photoDisplayWidth = width - padding * 2;
-  const photoHeights = photos.map((img) =>
+
+  const receiptPhotoHeights = receiptImages.map((img) =>
     Math.min(maxPhotoHeight, (img.height / img.width) * photoDisplayWidth),
   );
-  const photosBlockHeight =
-    photos.length > 0 ? 30 + photoHeights.reduce((sum, h) => sum + h + 12, 0) : 0;
+  const receiptPhotosBlockHeight =
+    receiptImages.length > 0 ? 30 + receiptPhotoHeights.reduce((sum, h) => sum + h + 12, 0) : 0;
+
+  // Shelf-tag photos: fixed-size 2-column grid, one thumbnail + label per item.
+  const shelfCols = 2;
+  const shelfGap = 16;
+  const shelfThumbWidth = (photoDisplayWidth - shelfGap * (shelfCols - 1)) / shelfCols;
+  const shelfThumbHeight = 200;
+  const shelfRowHeight = shelfThumbHeight + 36;
+  const shelfRows = Math.ceil(shelfImages.length / shelfCols);
+  const shelfBlockHeight = shelfImages.length > 0 ? 30 + shelfRows * shelfRowHeight : 0;
 
   const linesBlockHeight = 30 + result.lines.length * lineHeight;
   const footerHeight = 70;
   const totalHeight =
-    headerHeight + padding + linesBlockHeight + photosBlockHeight + footerHeight + padding;
+    headerHeight +
+    padding +
+    linesBlockHeight +
+    shelfBlockHeight +
+    receiptPhotosBlockHeight +
+    footerHeight +
+    padding;
 
   const canvas = document.createElement("canvas");
   canvas.width = width;
@@ -787,14 +845,36 @@ async function downloadProof(result) {
     y += lineHeight;
   }
 
-  if (photos.length > 0) {
+  if (shelfImages.length > 0) {
+    y += 6;
+    ctx.font = "bold 16px sans-serif";
+    ctx.fillStyle = "#17150f";
+    ctx.fillText("Photos des étiquettes en rayon", padding, y);
+    y += 20;
+    const gridTop = y;
+    shelfImages.forEach((entry, i) => {
+      const col = i % shelfCols;
+      const row = Math.floor(i / shelfCols);
+      const x = padding + col * (shelfThumbWidth + shelfGap);
+      const boxY = gridTop + row * shelfRowHeight;
+      ctx.drawImage(entry.img, x, boxY, shelfThumbWidth, shelfThumbHeight);
+      ctx.strokeStyle = "rgba(23,21,15,0.15)";
+      ctx.strokeRect(x, boxY, shelfThumbWidth, shelfThumbHeight);
+      ctx.font = "12px sans-serif";
+      ctx.fillStyle = "#555555";
+      ctx.fillText(truncateToWidth(entry.name, shelfThumbWidth), x, boxY + shelfThumbHeight + 18);
+    });
+    y = gridTop + shelfRows * shelfRowHeight;
+  }
+
+  if (receiptImages.length > 0) {
     y += 6;
     ctx.font = "bold 16px sans-serif";
     ctx.fillStyle = "#17150f";
     ctx.fillText("Photo(s) du ticket de caisse", padding, y);
     y += 20;
-    photos.forEach((img, i) => {
-      const h = photoHeights[i];
+    receiptImages.forEach((img, i) => {
+      const h = receiptPhotoHeights[i];
       ctx.drawImage(img, padding, y, photoDisplayWidth, h);
       y += h + 12;
     });
@@ -839,6 +919,10 @@ async function downloadProof(result) {
 }
 
 function startOver() {
+  for (const item of items) {
+    if (item.shelfPhoto) URL.revokeObjectURL(item.shelfPhoto.previewUrl);
+  }
+  clearShelfPhotos();
   items = [];
   receiptPhotos = [];
   receiptInputEl.value = "";
@@ -951,6 +1035,19 @@ loadPersistedPhotos().then((restored) => {
     renderReceiptPhotos();
     renderReceiptSection();
   }
+});
+
+loadShelfPhotos().then((photoById) => {
+  if (photoById.size === 0) return;
+  let changed = false;
+  for (const item of items) {
+    const photo = photoById.get(item.id);
+    if (photo) {
+      item.shelfPhoto = photo;
+      changed = true;
+    }
+  }
+  if (changed) renderTicket();
 });
 
 if ("serviceWorker" in navigator) {

@@ -5,7 +5,8 @@
 
 const DB_NAME = "fenua-check";
 const STORE_NAME = "receipt-photos";
-const DB_VERSION = 1;
+const SHELF_STORE_NAME = "shelf-photos";
+const DB_VERSION = 2;
 
 function openDb() {
   return new Promise((resolve, reject) => {
@@ -18,6 +19,9 @@ function openDb() {
       const db = request.result;
       if (!db.objectStoreNames.contains(STORE_NAME)) {
         db.createObjectStore(STORE_NAME, { keyPath: "id" });
+      }
+      if (!db.objectStoreNames.contains(SHELF_STORE_NAME)) {
+        db.createObjectStore(SHELF_STORE_NAME, { keyPath: "id" });
       }
     };
     request.onsuccess = () => resolve(request.result);
@@ -70,6 +74,66 @@ export async function clearPersistedPhotos() {
     const db = await openDb();
     const tx = db.transaction(STORE_NAME, "readwrite");
     tx.objectStore(STORE_NAME).clear();
+  } catch {
+    // Non-critical.
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Shelf-tag photos (one per basket item, kept as evidence of the shelf price)
+// ---------------------------------------------------------------------------
+
+export async function saveShelfPhoto(itemId, file) {
+  try {
+    const db = await openDb();
+    const tx = db.transaction(SHELF_STORE_NAME, "readwrite");
+    tx.objectStore(SHELF_STORE_NAME).put({ id: itemId, blob: file, name: file.name, type: file.type });
+    await new Promise((resolve) => {
+      tx.oncomplete = resolve;
+      tx.onerror = resolve;
+    });
+  } catch {
+    // Non-critical: the item just won't have a shelf photo in the proof.
+  }
+}
+
+export async function deleteShelfPhoto(itemId) {
+  try {
+    const db = await openDb();
+    const tx = db.transaction(SHELF_STORE_NAME, "readwrite");
+    tx.objectStore(SHELF_STORE_NAME).delete(itemId);
+  } catch {
+    // Non-critical.
+  }
+}
+
+export async function loadShelfPhotos() {
+  const map = new Map();
+  try {
+    const db = await openDb();
+    const tx = db.transaction(SHELF_STORE_NAME, "readonly");
+    const records = await new Promise((resolve, reject) => {
+      const req = tx.objectStore(SHELF_STORE_NAME).getAll();
+      req.onsuccess = () => resolve(req.result || []);
+      req.onerror = () => reject(req.error);
+    });
+    for (const record of records) {
+      const file = new File([record.blob], record.name || "etiquette.jpg", {
+        type: record.type || "image/jpeg",
+      });
+      map.set(record.id, { file, previewUrl: URL.createObjectURL(file) });
+    }
+  } catch {
+    // Non-critical: return whatever was gathered before the failure (none).
+  }
+  return map;
+}
+
+export async function clearShelfPhotos() {
+  try {
+    const db = await openDb();
+    const tx = db.transaction(SHELF_STORE_NAME, "readwrite");
+    tx.objectStore(SHELF_STORE_NAME).clear();
   } catch {
     // Non-critical.
   }
