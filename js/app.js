@@ -857,7 +857,14 @@ async function downloadProof(result) {
       const row = Math.floor(i / shelfCols);
       const x = padding + col * (shelfThumbWidth + shelfGap);
       const boxY = gridTop + row * shelfRowHeight;
-      ctx.drawImage(entry.img, x, boxY, shelfThumbWidth, shelfThumbHeight);
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(x, boxY, shelfThumbWidth, shelfThumbHeight);
+      const scale = Math.min(shelfThumbWidth / entry.img.width, shelfThumbHeight / entry.img.height);
+      const drawW = entry.img.width * scale;
+      const drawH = entry.img.height * scale;
+      const drawX = x + (shelfThumbWidth - drawW) / 2;
+      const drawY = boxY + (shelfThumbHeight - drawH) / 2;
+      ctx.drawImage(entry.img, drawX, drawY, drawW, drawH);
       ctx.strokeStyle = "rgba(23,21,15,0.15)";
       ctx.strokeRect(x, boxY, shelfThumbWidth, shelfThumbHeight);
       ctx.font = "12px sans-serif";
