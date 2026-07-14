@@ -601,18 +601,21 @@ compareBtnEl.addEventListener("click", async () => {
 
     const mismatchCount = result.lines.filter((line) => line.status === "mismatch").length;
     const inconclusiveCount = result.lines.filter((line) => line.status === "inconclusive").length;
-    saveTrip({
-      id: makeId(),
-      date: new Date().toISOString(),
-      itemCount: items.length,
-      totalShelf: result.totalShelf,
-      totalReceipt: result.totalReceiptMatched,
-      totalDifference: result.totalDifference,
-      mismatchCount,
-      inconclusiveCount,
-    });
-    renderHistory();
-    clearCurrentItems();
+    const totallyUnread = result.lines.length > 0 && inconclusiveCount === result.lines.length;
+    if (!totallyUnread) {
+      saveTrip({
+        id: makeId(),
+        date: new Date().toISOString(),
+        itemCount: items.length,
+        totalShelf: result.totalShelf,
+        totalReceipt: result.totalReceiptMatched,
+        totalDifference: result.totalDifference,
+        mismatchCount,
+        inconclusiveCount,
+      });
+      renderHistory();
+      clearCurrentItems();
+    }
     clearPersistedPhotos();
 
     // Hide the input flow, show only the result + a "start over" affordance.
@@ -709,6 +712,12 @@ function renderResult(result) {
   downloadProofBtn.textContent = "Télécharger le justificatif";
   downloadProofBtn.addEventListener("click", () => downloadProof(result));
 
+  const retryBtn = document.createElement("button");
+  retryBtn.type = "button";
+  retryBtn.className = "btn btn-outline btn-block";
+  retryBtn.textContent = "Reprendre le ticket en photo";
+  retryBtn.addEventListener("click", retryReceiptPhoto);
+
   const startOverBtn = document.createElement("button");
   startOverBtn.type = "button";
   startOverBtn.className = "btn btn-outline btn-block";
@@ -728,9 +737,9 @@ function renderResult(result) {
         présente cette comparaison au service client ou à la caisse.
       </p>
     `;
-    resultSectionEl.append(summary, linesCard, notice, downloadProofBtn, startOverBtn);
+    resultSectionEl.append(summary, linesCard, notice, downloadProofBtn, retryBtn, startOverBtn);
   } else {
-    resultSectionEl.append(summary, linesCard, downloadProofBtn, startOverBtn);
+    resultSectionEl.append(summary, linesCard, downloadProofBtn, retryBtn, startOverBtn);
   }
 }
 
@@ -923,6 +932,21 @@ async function downloadProof(result) {
   a.download = fileName;
   a.click();
   setTimeout(() => URL.revokeObjectURL(blobUrl), 10_000);
+}
+
+function retryReceiptPhoto() {
+  for (const photo of receiptPhotos) URL.revokeObjectURL(photo.previewUrl);
+  receiptPhotos = [];
+  receiptInputEl.value = "";
+  clearPersistedPhotos();
+  resultSectionEl.hidden = true;
+  resultSectionEl.innerHTML = "";
+  $("add-item-panel").hidden = false;
+  receiptSectionEl.hidden = false;
+  renderTicket();
+  renderReceiptPhotos();
+  renderReceiptSection();
+  receiptSectionEl.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
 function startOver() {
