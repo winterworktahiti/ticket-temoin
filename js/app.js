@@ -626,8 +626,8 @@ function renderResult(result) {
     <p>Total rayon : ${formatXpf(result.totalShelf)} · Total ticket : ${formatXpf(result.totalReceiptMatched)}</p>
     ${hasMismatch ? `<p style="font-weight:600;color:var(--tt-coral)">Écart : +${formatXpf(result.totalDifference)}</p>` : ""}
     ${
-      !hasMismatch && hasInconclusive
-        ? `<p>Au moins un article n'a pas pu être retrouvé sur le ticket avec certitude, vérifie-le à l'oeil sur la photo.</p>`
+      result.excludedCount > 0
+        ? `<p>${result.excludedCount} article${result.excludedCount > 1 ? "s" : ""} n'${result.excludedCount > 1 ? "ont" : "a"} pas pu être retrouvé${result.excludedCount > 1 ? "s" : ""} sur le ticket avec certitude (${formatXpf(result.excludedShelfTotal)} en rayon, non compris dans ce total) : vérifie-le${result.excludedCount > 1 ? "s" : ""} à l'oeil sur la photo.</p>`
         : ""
     }
   `;

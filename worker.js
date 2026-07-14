@@ -344,8 +344,11 @@ Réponds UNIQUEMENT avec un objet JSON strict, sans texte autour, au format exac
       };
     });
 
-    const totalShelf = lines.reduce((sum, l) => sum + l.shelfPrice, 0);
-    const totalReceiptMatched = lines.reduce((sum, l) => sum + (l.receiptPrice ?? 0), 0);
+    const matchedLines = lines.filter((l) => l.receiptPrice !== null);
+    const excludedLines = lines.filter((l) => l.receiptPrice === null);
+    const totalShelf = matchedLines.reduce((sum, l) => sum + l.shelfPrice, 0);
+    const totalReceiptMatched = matchedLines.reduce((sum, l) => sum + l.receiptPrice, 0);
+    const excludedShelfTotal = excludedLines.reduce((sum, l) => sum + l.shelfPrice, 0);
 
     if (ctx && env.STATS_KV) {
       ctx.waitUntil(incrementStat(env));
@@ -359,6 +362,8 @@ Réponds UNIQUEMENT avec un objet JSON strict, sans texte autour, au format exac
         totalShelf,
         totalReceiptMatched,
         totalDifference: totalReceiptMatched - totalShelf,
+        excludedCount: excludedLines.length,
+        excludedShelfTotal,
       },
     });
   } catch (err) {
