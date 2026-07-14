@@ -290,11 +290,12 @@ $("draft-confirm").addEventListener("click", () => {
       item.name = name;
       item.unitPrice = unitPrice;
       item.quantity = quantity;
+      item.weighed = weightModeOn || item.weighed;
       renderTicket();
       renderReceiptSection();
     }
   } else {
-    addItem(name, unitPrice, quantity);
+    addItem(name, unitPrice, quantity, weightModeOn);
   }
   resetDraft();
 
@@ -362,18 +363,18 @@ $("share-confirm").addEventListener("click", async () => {
   }
 });
 
-function addItem(name, unitPrice, quantity = 1) {
+function addItem(name, unitPrice, quantity = 1, weighed = false) {
   if (name.trim().toLowerCase() === "vigile") {
     showVigileEasterEgg();
     return;
   }
   const existing = items.find(
-    (item) => item.name.toLowerCase() === name.toLowerCase() && item.unitPrice === unitPrice,
+    (item) => item.name.toLowerCase() === name.toLowerCase() && item.unitPrice === unitPrice && item.weighed === weighed,
   );
   if (existing) {
     existing.quantity += quantity;
   } else {
-    items.push({ id: makeId(), name, unitPrice, quantity });
+    items.push({ id: makeId(), name, unitPrice, quantity, weighed });
   }
   renderTicket();
   renderReceiptSection();
@@ -556,6 +557,7 @@ compareBtnEl.addEventListener("click", async () => {
       name: item.name,
       shelfPrice: itemTotal(item),
       quantity: item.quantity,
+      weighed: Boolean(item.weighed),
     }));
     const result = await matchReceiptPhoto(
       receiptPhotos.map((photo) => photo.file),

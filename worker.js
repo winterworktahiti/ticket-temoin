@@ -326,6 +326,9 @@ Réponds UNIQUEMENT avec un objet JSON strict, sans texte autour, au format exac
       ? parsed.unmatched_receipt_lines
       : [];
 
+    const WEIGHT_TOLERANCE_RATIO = 0.15; // natural pesée variance, not a price violation
+    const WEIGHT_TOLERANCE_FLOOR = 20; // XPF, so cheap weighed items aren't over-strict
+
     const lines = items.map((item) => {
       const match = matches.find((m) => m.id === item.id);
       const receiptPrice = typeof match?.receipt_price === "number" ? match.receipt_price : null;
@@ -335,7 +338,12 @@ Réponds UNIQUEMENT avec un objet JSON strict, sans texte autour, au format exac
       let difference = null;
       if (receiptPrice !== null) {
         difference = receiptPrice - item.shelfPrice;
-        status = difference > 0 ? "mismatch" : "match";
+        if (item.weighed) {
+          const tolerance = Math.max(item.shelfPrice * WEIGHT_TOLERANCE_RATIO, WEIGHT_TOLERANCE_FLOOR);
+          status = difference > tolerance ? "mismatch" : "match";
+        } else {
+          status = difference > 0 ? "mismatch" : "match";
+        }
       }
 
       return {
