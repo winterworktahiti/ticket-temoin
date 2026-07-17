@@ -52,7 +52,7 @@ const VISION_PROVIDERS = {
   gemini: {
     envKey: "GEMINI_API_KEY",
     baseUrl: () => "https://generativelanguage.googleapis.com/v1beta/openai",
-    model: "gemini-2.5-flash-lite",
+    model: "gemini-3.1-flash-lite",
     label: "Gemini",
   },
 };
