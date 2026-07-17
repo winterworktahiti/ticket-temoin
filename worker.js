@@ -69,6 +69,7 @@ async function callQwenVision(env, { systemPrompt, userText, images, maxTokens =
       ],
       temperature: 0.1,
       max_tokens: maxTokens,
+      response_format: { type: "json_object" },
     }),
   });
 
@@ -78,7 +79,14 @@ async function callQwenVision(env, { systemPrompt, userText, images, maxTokens =
   }
 
   const json = await response.json();
-  const rawContent = json.choices?.[0]?.message?.content ?? "";
+  const rawContent = (json.choices?.[0]?.message?.content ?? "").trim();
+  try {
+    return JSON.parse(rawContent);
+  } catch {
+    // Defense-in-depth: json_object mode should return pure JSON, but if the
+    // provider still wraps it in markdown fences or a preamble, try to
+    // salvage the first {...} block before giving up.
+  }
   const jsonMatch = rawContent.match(/\{[\s\S]*\}/);
   if (!jsonMatch) {
     throw new Error("Réponse Qwen illisible. Réessaie avec une photo plus nette.");
