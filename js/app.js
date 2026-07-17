@@ -1,5 +1,5 @@
 import { compressImageFile } from "./image-compress.js";
-import { scanItemPhoto, matchReceiptPhoto } from "./ticket-api.js";
+import { scanItemPhoto, matchReceiptPhoto, activeProvider } from "./ticket-api.js";
 import {
   getFrequentItems,
   getTrips,
@@ -1102,3 +1102,9 @@ function refreshStatsBadge() {
 }
 
 refreshStatsBadge();
+
+if (activeProvider === "gemini") {
+  const providerBadge = $("provider-badge");
+  providerBadge.textContent = "🧪 Mode test : Gemini";
+  providerBadge.hidden = false;
+}

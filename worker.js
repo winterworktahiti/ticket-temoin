@@ -42,12 +42,28 @@ function bytesToBase64(bytes) {
   return btoa(binary);
 }
 
-async function callQwenVision(env, { systemPrompt, userText, images, maxTokens = 2000 }) {
-  const apiKey = env.QWEN_API_KEY;
-  const baseUrl = env.QWEN_BASE_URL || "https://dashscope-intl.aliyuncs.com/compatible-mode/v1";
+const VISION_PROVIDERS = {
+  qwen: {
+    envKey: "QWEN_API_KEY",
+    baseUrl: (env) => env.QWEN_BASE_URL || "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
+    model: "qwen3-vl-flash",
+    label: "Qwen",
+  },
+  gemini: {
+    envKey: "GEMINI_API_KEY",
+    baseUrl: () => "https://generativelanguage.googleapis.com/v1beta/openai",
+    model: "gemini-2.5-flash-lite",
+    label: "Gemini",
+  },
+};
+
+async function callVisionModel(env, { provider = "qwen", systemPrompt, userText, images, maxTokens = 2000 }) {
+  const config = VISION_PROVIDERS[provider] || VISION_PROVIDERS.qwen;
+  const apiKey = env[config.envKey];
   if (!apiKey) {
-    throw new Error("La clé Qwen n'est pas configurée côté serveur. Vérifie les variables du projet.");
+    throw new Error(`La clé ${config.label} n'est pas configurée côté serveur (variable ${config.envKey}).`);
   }
+  const baseUrl = config.baseUrl(env);
 
   const content = [{ type: "text", text: userText }];
   for (const image of images) {
@@ -62,7 +78,7 @@ async function callQwenVision(env, { systemPrompt, userText, images, maxTokens =
       Authorization: `Bearer ${apiKey}`,
     },
     body: JSON.stringify({
-      model: "qwen3-vl-flash",
+      model: config.model,
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content },
@@ -75,7 +91,7 @@ async function callQwenVision(env, { systemPrompt, userText, images, maxTokens =
 
   if (!response.ok) {
     const bodyText = await response.text().catch(() => "");
-    throw new Error(`Erreur Qwen (${response.status}). ${bodyText.slice(0, 300)}`);
+    throw new Error(`Erreur ${config.label} (${response.status}). ${bodyText.slice(0, 300)}`);
   }
 
   const json = await response.json();
@@ -89,12 +105,12 @@ async function callQwenVision(env, { systemPrompt, userText, images, maxTokens =
   }
   const jsonMatch = rawContent.match(/\{[\s\S]*\}/);
   if (!jsonMatch) {
-    throw new Error("Réponse Qwen illisible. Réessaie avec une photo plus nette.");
+    throw new Error(`Réponse ${config.label} illisible. Réessaie avec une photo plus nette.`);
   }
   try {
     return JSON.parse(jsonMatch[0]);
   } catch {
-    throw new Error("Réponse Qwen mal formée. Réessaie avec une photo plus nette.");
+    throw new Error(`Réponse ${config.label} mal formée. Réessaie avec une photo plus nette.`);
   }
 }
 
@@ -135,7 +151,9 @@ async function handleScan(request, env) {
     }
 
     const isBarcode = mode === "barcode";
-    const parsed = await callQwenVision(env, {
+    const provider = form.get("provider") === "gemini" ? "gemini" : "qwen";
+    const parsed = await callVisionModel(env, {
+      provider,
       systemPrompt: isBarcode ? BARCODE_PROMPT : SHELF_PROMPT,
       userText: isBarcode ? "Photo du produit et de son code-barre :" : "Photo de l'étiquette prix :",
       images: [{ bytes, type: file.type || "image/jpeg" }],
@@ -288,6 +306,7 @@ async function handleMatch(request, env, ctx) {
     const form = await request.formData();
     const files = form.getAll("receipt").filter((entry) => entry instanceof File);
     const itemsRaw = form.get("items");
+    const provider = form.get("provider") === "gemini" ? "gemini" : "qwen";
 
     if (files.length === 0) {
       return jsonResponse({ ok: false, error: "Aucune photo de ticket reçue." }, 400);
@@ -361,7 +380,8 @@ Réponds UNIQUEMENT avec un objet JSON strict, sans texte autour, au format exac
 }
 "receipt_lines" contient TOUTES les lignes lues à l'étape 1, toutes photos confondues. Le tableau "matches" doit contenir EXACTEMENT un objet par article du panier, dans le même ordre, avec le même id, en te basant sur "receipt_lines". "unmatched_receipt_lines" liste les entrées de "receipt_lines" qui ne correspondent à aucun article du panier.`;
 
-    const parsed = await callQwenVision(env, {
+    const parsed = await callVisionModel(env, {
+      provider,
       systemPrompt,
       userText: images.length > 1 ? "Photos du ticket de caisse (une seule et même ticket) :" : "Photo du ticket de caisse :",
       images,
@@ -429,6 +449,7 @@ Réponds UNIQUEMENT avec un objet JSON strict, sans texte autour, au format exac
         totalDifference: totalReceiptMatched - totalShelf,
         excludedCount: excludedLines.length,
         excludedShelfTotal,
+        provider,
       },
     });
   } catch (err) {
