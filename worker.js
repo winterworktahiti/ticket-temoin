@@ -42,7 +42,7 @@ function bytesToBase64(bytes) {
   return btoa(binary);
 }
 
-async function callQwenVision(env, { systemPrompt, userText, images }) {
+async function callQwenVision(env, { systemPrompt, userText, images, maxTokens = 2000 }) {
   const apiKey = env.QWEN_API_KEY;
   const baseUrl = env.QWEN_BASE_URL || "https://dashscope-intl.aliyuncs.com/compatible-mode/v1";
   if (!apiKey) {
@@ -68,7 +68,7 @@ async function callQwenVision(env, { systemPrompt, userText, images }) {
         { role: "user", content },
       ],
       temperature: 0.1,
-      max_tokens: 2000,
+      max_tokens: maxTokens,
     }),
   });
 
@@ -318,6 +318,11 @@ Réponds UNIQUEMENT avec un objet JSON strict, sans texte autour, au format exac
       systemPrompt,
       userText: images.length > 1 ? "Photos du ticket de caisse (une seule et même ticket) :" : "Photo du ticket de caisse :",
       images,
+      // The response has to hold a full receipt transcription (receipt_lines),
+      // one match object per basket item, and any leftover lines: a fixed
+      // 2000-token budget truncates mid-JSON on longer shopping trips and
+      // produces an unparsable response. Scale it with basket size instead.
+      maxTokens: Math.min(8000, 2200 + items.length * 220),
     });
 
     const rawMatches = Array.isArray(parsed.matches) ? parsed.matches : [];
