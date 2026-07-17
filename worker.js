@@ -239,6 +239,42 @@ function resolveDuplicateReceiptAssignments(matches, items) {
   return matches;
 }
 
+const DEPARTMENT_HEADERS = new Set([
+  "cremerie",
+  "epicerie",
+  "fromage",
+  "fromages",
+  "fruits et legumes",
+  "poissonnerie",
+  "boucherie",
+  "charcuterie",
+  "parfumerie",
+  "hygiene",
+  "boissons",
+  "surgeles",
+  "liquides",
+  "entretien",
+  "bazar",
+  "textile",
+  "jouet",
+  "jouets",
+  "papeterie",
+  "bebe",
+  "boulangerie",
+  "patisserie",
+]);
+
+function isNoiseReceiptLine(text) {
+  if (typeof text !== "string") return true;
+  const trimmed = text.trim();
+  if (!trimmed) return true;
+  // Pure digit/reference string (barcode), no letters at all.
+  if (!/[a-zA-Z]/.test(trimmed) && /\d/.test(trimmed)) return true;
+  // A bare department/section header with nothing else on the line.
+  if (DEPARTMENT_HEADERS.has(normalizeForCompare(trimmed))) return true;
+  return false;
+}
+
 async function handleMatch(request, env, ctx) {
   try {
     const form = await request.formData();
@@ -300,7 +336,10 @@ Voici les articles du panier. "prix_total_attendu" est le prix TOTAL attendu pou
 ${itemsDescription}
 
 Procède en deux temps, dans cet ordre :
-1. Transcris D'ABORD toutes les lignes produit du ticket de caisse que tu peux lire sur l'ensemble des photos, avec leur prix exact (en XPF, entier, sans symbole). Un ticket de supermarché a en général une ligne d'intitulé produit suivie d'un code-barre en dessous : ignore le code-barre, ne prends que le nom et le prix. Sous certaines lignes produit, le ticket imprime une ligne de calcul juste en dessous, sans nom de produit propre — par exemple "0.xxx kg x yyy F/kg" (article au poids) ou "N x yyy F" (déclinaison de la quantité et du prix unitaire). Ces lignes de calcul ne sont PAS des articles séparés : elles appartiennent à la ligne produit juste au-dessus et doivent être fusionnées avec elle en une seule entrée de "receipt_lines" (garde le nom du produit comme texte, et le prix total déjà indiqué sur la ligne produit comme prix — ne resomme pas). Sois exhaustif, ne saute aucune ligne même si elle te semble déjà correspondre à un article du panier. Important sur le format : le XPF n'a PAS de centimes ; un point dans un prix imprimé est un séparateur de milliers, jamais une virgule décimale (ex: "3.950" veut dire 3950, pas 3,95 ni 4).
+1. Transcris D'ABORD toutes les lignes PRODUIT du ticket de caisse que tu peux lire sur l'ensemble des photos, avec leur prix exact (en XPF, entier, sans symbole). N'inclus dans "receipt_lines" QUE des lignes produit ayant un nom et un prix propres. Exclus explicitement, et ne les fais apparaître NULLE PART dans ta réponse (ni receipt_lines, ni matches, ni unmatched_receipt_lines) :
+   - les lignes qui ne sont qu'une suite de chiffres (code-barre / référence article), sans texte produit ni prix ;
+   - les intitulés de rayon en majuscules qui servent de titre de section (ex : "CREMERIE", "EPICERIE", "FROMAGE", "FRUITS ET LEGUMES", "POISSONNERIE", "PARFUMERIE", "BOISSONS"), reconnaissables au fait qu'ils n'ont pas de prix à côté et précèdent souvent un simple trait horizontal.
+   Sous certaines lignes produit, le ticket imprime une ligne de calcul juste en dessous, sans nom de produit propre — par exemple "0.xxx kg x yyy F/kg" (article au poids) ou "N x yyy F" (déclinaison de la quantité et du prix unitaire). Ces lignes de calcul ne sont PAS des articles séparés : elles appartiennent à la ligne produit juste au-dessus et doivent être fusionnées avec elle en une seule entrée de "receipt_lines" (garde le nom du produit comme texte, et le prix total déjà indiqué sur la ligne produit comme prix — ne resomme pas). Sois exhaustif sur les VRAIS articles, ne saute aucune ligne produit même si elle te semble déjà correspondre à un article du panier. Important sur le format : le XPF n'a PAS de centimes ; un point dans un prix imprimé est un séparateur de milliers, jamais une virgule décimale (ex: "3.950" veut dire 3950, pas 3,95 ni 4).
 2. Ensuite seulement, pour CHAQUE article du panier ci-dessus, retrouve dans ta transcription la ou les lignes qui correspondent (par similarité de nom, même si l'intitulé de caisse est abrégé ou tronqué). Si une quantité est indiquée pour l'article, le ticket peut soit répéter la ligne plusieurs fois (additionne alors leurs prix), soit n'avoir qu'une seule ligne dont le prix reflète déjà le total pour cette quantité : dans les deux cas, "receipt_price" doit être le prix TOTAL correspondant à la quantité entière de cet article, comparable directement à "prix_total_attendu". N'invente jamais un prix : si après une lecture attentive aucune ligne ne correspond clairement, mets receipt_price à null plutôt que de deviner.
 IMPORTANT — une ligne de ticket ne peut servir qu'à UN SEUL article du panier (sauf répétition légitime pour une quantité du MÊME article). N'assigne jamais la même "receipt_line_text" à deux articles différents du panier : si deux articles semblent proches d'une même ligne, ne l'attribue qu'au plus proche par le nom et laisse "receipt_price" à null pour l'autre. Ne rapproche jamais deux intitulés dont les mots-clés produits ne correspondent pas (ex : "citron" ne correspond pas à "eau", "haricot" ne correspond pas à "liquide").
 
@@ -327,9 +366,9 @@ Réponds UNIQUEMENT avec un objet JSON strict, sans texte autour, au format exac
 
     const rawMatches = Array.isArray(parsed.matches) ? parsed.matches : [];
     const matches = resolveDuplicateReceiptAssignments(rawMatches, items);
-    const unmatchedReceiptLines = Array.isArray(parsed.unmatched_receipt_lines)
-      ? parsed.unmatched_receipt_lines
-      : [];
+    const unmatchedReceiptLines = (
+      Array.isArray(parsed.unmatched_receipt_lines) ? parsed.unmatched_receipt_lines : []
+    ).filter((line) => !isNoiseReceiptLine(line));
 
     const WEIGHT_TOLERANCE_RATIO = 0.15; // natural pesée variance, not a price violation
     const WEIGHT_TOLERANCE_FLOOR = 20; // XPF, so cheap weighed items aren't over-strict
