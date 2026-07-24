@@ -290,14 +290,42 @@ const DEPARTMENT_HEADERS = new Set([
   "patisserie",
 ]);
 
+const FOOTER_LINE_PREFIXES = [
+  "total",
+  "sous total",
+  "sous-total",
+  "nb article",
+  "nombre article",
+  "especes",
+  "cheque",
+  "carte bancaire",
+  "cb",
+  "rendu",
+  "monnaie",
+  "net a payer",
+  "montant",
+  "tva",
+  "merci",
+];
+
 function isNoiseReceiptLine(text) {
   if (typeof text !== "string") return true;
   const trimmed = text.trim();
   if (!trimmed) return true;
   // Pure digit/reference string (barcode), no letters at all.
   if (!/[a-zA-Z]/.test(trimmed) && /\d/.test(trimmed)) return true;
+  const normalized = normalizeForCompare(trimmed);
   // A bare department/section header with nothing else on the line.
-  if (DEPARTMENT_HEADERS.has(normalizeForCompare(trimmed))) return true;
+  if (DEPARTMENT_HEADERS.has(normalized)) return true;
+  // A bare weight or quantity calculation, with no product name of its own —
+  // these should have been merged into their product line; when the model
+  // leaks them separately anyway, they're never a standalone real item.
+  if (/^\d+[.,]?\d*\s*kg\s*[x×]\s*\d+[.,]?\d*\s*f(\s*\/\s*kg)?$/i.test(trimmed)) return true;
+  if (/^\d+\s*[x×]\s*\d+[.,]?\d*\s*f$/i.test(trimmed)) return true;
+  // Receipt footer / payment lines (total, card, change...), not products.
+  if (FOOTER_LINE_PREFIXES.some((prefix) => normalized === prefix || normalized.startsWith(`${prefix} `))) {
+    return true;
+  }
   return false;
 }
 
